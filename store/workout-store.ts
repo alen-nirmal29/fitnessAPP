@@ -116,7 +116,63 @@ const generateFallbackPlan = (specificGoal: SpecificGoal, duration: string): Wor
         },
         {
           id: 'day-4',
-          name: 'Day 4: Rest',
+          name: 'Day 4: Shoulders & Core',
+          exercises: [
+            {
+              id: 'ex-10',
+              name: 'Overhead Press',
+              description: 'Press dumbbells overhead',
+              muscleGroup: 'shoulders',
+              sets: 4,
+              reps: 10,
+              restTime: 90,
+            },
+            {
+              id: 'ex-11',
+              name: 'Lateral Raises',
+              description: 'Raise dumbbells to sides',
+              muscleGroup: 'shoulders',
+              sets: 3,
+              reps: 12,
+              restTime: 60,
+            },
+            {
+              id: 'ex-12',
+              name: 'Plank',
+              description: 'Hold plank position',
+              muscleGroup: 'core',
+              sets: 3,
+              reps: 30,
+              restTime: 60,
+            },
+          ],
+          restDay: false,
+        },
+        {
+          id: 'day-5',
+          name: 'Day 5: Cardio',
+          exercises: [
+            {
+              id: 'ex-13',
+              name: 'Running',
+              description: 'Moderate pace cardio',
+              muscleGroup: 'cardio',
+              sets: 1,
+              reps: 30,
+              restTime: 0,
+            },
+          ],
+          restDay: false,
+        },
+        {
+          id: 'day-6',
+          name: 'Day 6: Active Recovery',
+          exercises: [],
+          restDay: true,
+        },
+        {
+          id: 'day-7',
+          name: 'Day 7: Rest',
           exercises: [],
           restDay: true,
         },
@@ -197,7 +253,79 @@ const generateFallbackPlan = (specificGoal: SpecificGoal, duration: string): Wor
         },
         {
           id: 'day-3',
-          name: 'Day 3: Active Recovery',
+          name: 'Day 3: Cardio HIIT',
+          exercises: [
+            {
+              id: 'ex-7',
+              name: 'High Knees',
+              description: 'Bring knees up high rapidly',
+              muscleGroup: 'cardio',
+              sets: 4,
+              reps: 30,
+              restTime: 30,
+            },
+            {
+              id: 'ex-8',
+              name: 'Jumping Jacks',
+              description: 'Jump with arms and legs spread',
+              muscleGroup: 'full_body',
+              sets: 4,
+              reps: 20,
+              restTime: 30,
+            },
+          ],
+          restDay: false,
+        },
+        {
+          id: 'day-4',
+          name: 'Day 4: Upper Body',
+          exercises: [
+            {
+              id: 'ex-9',
+              name: 'Push-ups',
+              description: 'Standard push-up movement',
+              muscleGroup: 'chest',
+              sets: 3,
+              reps: 10,
+              restTime: 60,
+            },
+            {
+              id: 'ex-10',
+              name: 'Pike Push-ups',
+              description: 'Push-ups in pike position',
+              muscleGroup: 'shoulders',
+              sets: 3,
+              reps: 8,
+              restTime: 60,
+            },
+          ],
+          restDay: false,
+        },
+        {
+          id: 'day-5',
+          name: 'Day 5: Active Recovery',
+          exercises: [],
+          restDay: true,
+        },
+        {
+          id: 'day-6',
+          name: 'Day 6: Full Body Circuit',
+          exercises: [
+            {
+              id: 'ex-11',
+              name: 'Burpees',
+              description: 'Full body explosive movement',
+              muscleGroup: 'full_body',
+              sets: 3,
+              reps: 8,
+              restTime: 60,
+            },
+          ],
+          restDay: false,
+        },
+        {
+          id: 'day-7',
+          name: 'Day 7: Rest',
           exercises: [],
           restDay: true,
         },
@@ -278,7 +406,70 @@ const generateFallbackPlan = (specificGoal: SpecificGoal, duration: string): Wor
         },
         {
           id: 'day-3',
-          name: 'Day 3: Rest',
+          name: 'Day 3: Accessory Work',
+          exercises: [
+            {
+              id: 'ex-7',
+              name: 'Dumbbell Flyes',
+              description: 'Chest isolation exercise',
+              muscleGroup: 'chest',
+              sets: 3,
+              reps: 12,
+              restTime: 90,
+            },
+            {
+              id: 'ex-8',
+              name: 'Face Pulls',
+              description: 'Rear delt and upper back',
+              muscleGroup: 'back',
+              sets: 3,
+              reps: 15,
+              restTime: 60,
+            },
+          ],
+          restDay: false,
+        },
+        {
+          id: 'day-4',
+          name: 'Day 4: Conditioning',
+          exercises: [
+            {
+              id: 'ex-9',
+              name: 'Farmer\'s Walk',
+              description: 'Carry heavy weights',
+              muscleGroup: 'full_body',
+              sets: 3,
+              reps: 50,
+              restTime: 120,
+            },
+          ],
+          restDay: false,
+        },
+        {
+          id: 'day-5',
+          name: 'Day 5: Active Recovery',
+          exercises: [],
+          restDay: true,
+        },
+        {
+          id: 'day-6',
+          name: 'Day 6: Hypertrophy',
+          exercises: [
+            {
+              id: 'ex-10',
+              name: 'Incline Bench Press',
+              description: 'Upper chest focus',
+              muscleGroup: 'chest',
+              sets: 4,
+              reps: 8,
+              restTime: 120,
+            },
+          ],
+          restDay: false,
+        },
+        {
+          id: 'day-7',
+          name: 'Day 7: Rest',
           exercises: [],
           restDay: true,
         },
@@ -392,9 +583,11 @@ export const useWorkoutStore = create<WorkoutStore>()(
                   Please provide:
                   1. A plan name
                   2. A detailed description
-                  3. Weekly schedule with specific exercises
+                  3. A weekly schedule with 4-7 days (including rest days)
                   4. Sets, reps, and rest times for each exercise
                   5. Progressive overload recommendations
+                  
+                  IMPORTANT: Create a weekly schedule with at least 4-7 days. Include both workout days and rest days.
                   
                   Format as JSON with this structure:
                   {
@@ -415,6 +608,11 @@ export const useWorkoutStore = create<WorkoutStore>()(
                           }
                         ],
                         "restDay": false
+                      },
+                      {
+                        "name": "Day 2: Rest Day",
+                        "exercises": [],
+                        "restDay": true
                       }
                     ]
                   }`

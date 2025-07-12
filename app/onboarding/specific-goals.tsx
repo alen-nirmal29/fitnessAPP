@@ -113,8 +113,8 @@ export default function SpecificGoalsScreen() {
             title="Back"
             onPress={handleBack}
             variant="outline"
-            size="large"
-            style={styles.button}
+            size="medium"
+            style={styles.backButton}
             disabled={isLoading}
           />
           <Button
@@ -122,7 +122,7 @@ export default function SpecificGoalsScreen() {
             onPress={handleNext}
             variant="primary"
             size="large"
-            style={styles.button}
+            style={styles.completeButton}
             disabled={!selectedGoal}
             isLoading={isLoading}
           />
@@ -165,7 +165,10 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     gap: 16,
   },
-  button: {
-    flex: 1,
+  backButton: {
+    flex: 0.4,
+  },
+  completeButton: {
+    flex: 0.6,
   },
 });

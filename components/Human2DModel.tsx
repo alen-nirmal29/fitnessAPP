@@ -83,9 +83,9 @@ export default function Human2DModel({
     // Calculate dynamic positions based on body proportions and view mode
     const shoulderEdgeX = centerX + (viewMode === 'front' ? bodyProps.shoulderW - 15 : -bodyProps.shoulderW + 15);
     const chestEdgeX = centerX + (viewMode === 'front' ? bodyProps.chestW - 10 : -bodyProps.chestW + 10);
-    const armX = centerX + (viewMode === 'front' ? bodyProps.shoulderW + bodyProps.armW + 10 : -bodyProps.shoulderW - bodyProps.armW - 10);
+    const armX = centerX + (viewMode === 'front' ? bodyProps.shoulderW + 15 : -bodyProps.shoulderW - 15);
     const waistEdgeX = centerX + (viewMode === 'front' ? bodyProps.waistW - 10 : -bodyProps.waistW + 10);
-    const legX = centerX + (viewMode === 'front' ? bodyProps.legW + 5 : -bodyProps.legW - 5);
+    const legX = centerX + (viewMode === 'front' ? 15 : -15);
     
     return [
       {

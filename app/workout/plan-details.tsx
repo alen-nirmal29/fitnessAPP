@@ -5,7 +5,7 @@ import { Calendar, Clock, ArrowRight, CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
-import HumanModel3D from '@/components/HumanModel3D';
+import Human2DModel from '@/components/Human2DModel';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -39,6 +39,18 @@ export default function PlanDetailsScreen() {
 
   const handleBack = () => {
     router.replace('/workout/plan-selection');
+  };
+
+  const handleViewDetails = (day: any) => {
+    // Navigate to workout details screen with the specific day's exercises
+    router.push({
+      pathname: '/workout/exercise-details',
+      params: { 
+        dayId: day.id,
+        dayName: day.name,
+        exercises: JSON.stringify(day.exercises)
+      }
+    });
   };
 
   // Mock goal measurements based on the workout plan
@@ -133,7 +145,7 @@ export default function PlanDetailsScreen() {
               )}
               
               {index < currentPlan.schedule.length - 1 && (
-                <TouchableOpacity style={styles.viewMoreButton}>
+                <TouchableOpacity style={styles.viewMoreButton} onPress={() => handleViewDetails(day)}>
                   <Text style={styles.viewMoreText}>View Details</Text>
                   <ArrowRight size={16} color={Colors.dark.accent} />
                 </TouchableOpacity>
@@ -148,13 +160,21 @@ export default function PlanDetailsScreen() {
             <Text style={styles.modelText}>
               Based on your goals and this workout plan, here's how your body could transform over time.
             </Text>
-            
-            <HumanModel3D 
-              user={user}
-              goalMeasurements={getGoalMeasurements()}
-              showComparison={true}
-              interactive={true}
-            />
+            <View style={styles.verticalModels}>
+              <Text style={styles.modelLabel}>Current</Text>
+              <Human2DModel 
+                user={user}
+                interactive={false}
+                style={styles.modelNormal}
+              />
+              <Text style={styles.modelLabel}>Goal</Text>
+              <Human2DModel 
+                user={user}
+                goalMeasurements={getGoalMeasurements()}
+                interactive={false}
+                style={styles.modelNormal}
+              />
+            </View>
           </Card>
         </View>
       </ScrollView>
@@ -292,6 +312,37 @@ const styles = StyleSheet.create({
     color: Colors.dark.subtext,
     marginBottom: 16,
     lineHeight: 20,
+  },
+  modelWrapper: {
+    width: '100%',
+    aspectRatio: 1.3, // Adjust as needed for compact model
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  compactModel: {
+    width: '100%',
+    height: '100%',
+  },
+  verticalModels: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 16,
+    width: '100%',
+  },
+  modelNormal: {
+    width: 320,
+    height: 400,
+    marginVertical: 12,
+    alignSelf: 'center',
+  },
+  modelLabel: {
+    fontSize: 16,
+    color: Colors.dark.text,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+    alignSelf: 'center',
   },
   footer: {
     position: 'absolute',

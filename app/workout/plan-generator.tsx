@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Platform, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
 import { MessageSquare } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -54,93 +54,100 @@ export default function PlanGeneratorScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Generate Workout Plan</Text>
-          <Text style={styles.subtitle}>
-            Our AI will create a personalized workout plan based on your goals and preferences
-          </Text>
-        </View>
-
-        <Card style={styles.infoCard}>
-          <Text style={styles.infoTitle}>How it works</Text>
-          <Text style={styles.infoText}>
-            We'll use your profile information, body measurements, and fitness goals to create a
-            customized workout plan. You can also provide additional details below.
-          </Text>
-        </Card>
-
-        <View style={styles.form}>
-          <Text style={styles.label}>Plan Duration</Text>
-          <View style={styles.durationContainer}>
-            <Button
-              title="1 Month"
-              onPress={() => handleDurationSelect('1_month')}
-              variant={duration === '1_month' ? 'primary' : 'outline'}
-              style={styles.durationButton}
-            />
-            <Button
-              title="3 Months"
-              onPress={() => handleDurationSelect('3_month')}
-              variant={duration === '3_month' ? 'primary' : 'outline'}
-              style={styles.durationButton}
-            />
-            <Button
-              title="6 Months"
-              onPress={() => handleDurationSelect('6_month')}
-              variant={duration === '6_month' ? 'primary' : 'outline'}
-              style={styles.durationButton}
-            />
-          </View>
-
-          <Input
-            label="Additional Details (Optional)"
-            placeholder="E.g., I have access to a gym, I prefer morning workouts, etc."
-            value={message}
-            onChangeText={setMessage}
-            multiline
-            numberOfLines={Platform.OS === 'ios' ? 0 : 4}
-            style={styles.messageInput}
-            inputStyle={styles.textArea}
-            leftIcon={<MessageSquare size={20} color={Colors.dark.subtext} />}
-          />
-        </View>
-
-        {error && (
-          <Text style={styles.errorText}>
-            {error}
-          </Text>
-        )}
-
-        {isGenerating && (
-          <View style={styles.generatingContainer}>
-            <ActivityIndicator size="large" color={Colors.dark.accent} />
-            <Text style={styles.generatingText}>
-              Generating your personalized workout plan...
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <Text style={styles.title}>Generate Workout Plan</Text>
+            <Text style={styles.subtitle}>
+              Our AI will create a personalized workout plan based on your goals and preferences
             </Text>
           </View>
-        )}
-      </ScrollView>
 
-      <View style={styles.footer}>
-        <Button
-          title="Back"
-          onPress={handleBack}
-          variant="outline"
-          size="large"
-          style={styles.button}
-        />
-        <Button
-          title="Generate Plan"
-          onPress={handleGeneratePlan}
-          variant="primary"
-          size="large"
-          style={styles.button}
-          isLoading={isLoading || isGenerating}
-        />
+          <Card style={styles.infoCard}>
+            <Text style={styles.infoTitle}>How it works</Text>
+            <Text style={styles.infoText}>
+              We'll use your profile information, body measurements, and fitness goals to create a
+              customized workout plan. You can also provide additional details below.
+            </Text>
+          </Card>
+
+          <View style={styles.form}>
+            <Text style={styles.label}>Plan Duration</Text>
+            <View style={styles.durationContainer}>
+              <Button
+                title="1 Month"
+                onPress={() => handleDurationSelect('1_month')}
+                variant={duration === '1_month' ? 'primary' : 'outline'}
+                style={styles.durationButton}
+              />
+              <Button
+                title="3 Months"
+                onPress={() => handleDurationSelect('3_month')}
+                variant={duration === '3_month' ? 'primary' : 'outline'}
+                style={styles.durationButton}
+              />
+              <Button
+                title="6 Months"
+                onPress={() => handleDurationSelect('6_month')}
+                variant={duration === '6_month' ? 'primary' : 'outline'}
+                style={styles.durationButton}
+              />
+            </View>
+
+            <Input
+              label="Additional Details (Optional)"
+              placeholder="E.g., I have access to a gym, I prefer morning workouts, etc."
+              value={message}
+              onChangeText={setMessage}
+              multiline
+              numberOfLines={Platform.OS === 'ios' ? 0 : 4}
+              style={styles.messageInput}
+              inputStyle={styles.textArea}
+              leftIcon={<MessageSquare size={20} color={Colors.dark.subtext} />}
+            />
+          </View>
+
+          {error && (
+            <Text style={styles.errorText}>
+              {error}
+            </Text>
+          )}
+
+          {isGenerating && (
+            <View style={styles.generatingContainer}>
+              <ActivityIndicator size="large" color={Colors.dark.accent} />
+              <Text style={styles.generatingText}>
+                Generating your personalized workout plan...
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <Button
+            title="Back"
+            onPress={handleBack}
+            variant="outline"
+            size="large"
+            style={styles.backButton}
+          />
+          <Button
+            title="Generate Plan"
+            onPress={handleGeneratePlan}
+            variant="primary"
+            size="large"
+            style={styles.generateButton}
+            isLoading={isLoading || isGenerating}
+          />
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -149,10 +156,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.dark.background,
   },
+  content: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
-    flexGrow: 1,
     padding: 24,
-    paddingBottom: 100,
+    paddingBottom: 24,
   },
   header: {
     marginBottom: 24,
@@ -194,10 +206,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 16,
+    gap: 8,
   },
   durationButton: {
     flex: 1,
-    marginHorizontal: 4,
+    minHeight: 48,
   },
   messageInput: {
     height: 120,
@@ -223,10 +236,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     padding: 24,
     backgroundColor: Colors.dark.background,
     borderTopWidth: 1,
@@ -235,7 +244,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 16,
   },
-  button: {
+  backButton: {
     flex: 1,
+    minHeight: 56,
+  },
+  generateButton: {
+    flex: 2,
+    minHeight: 56,
   },
 });

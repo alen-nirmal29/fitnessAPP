@@ -154,6 +154,39 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
+      // Update body composition from Google Fit
+      updateBodyCompositionFromGoogleFit: async (googleFitData: any) => {
+        const { user } = get();
+        
+        if (user) {
+          const updatedBodyComposition = {
+            ...user.bodyComposition,
+            muscleMass: googleFitData.muscleMass || user.bodyComposition?.muscleMass,
+            bodyFat: googleFitData.bodyFat || user.bodyComposition?.bodyFat,
+            boneMass: googleFitData.boneMass || user.bodyComposition?.boneMass,
+            waterWeight: googleFitData.waterWeight || user.bodyComposition?.waterWeight,
+            bmr: googleFitData.bmr || user.bodyComposition?.bmr,
+            visceralFat: googleFitData.visceralFat || user.bodyComposition?.visceralFat,
+            proteinMass: googleFitData.proteinMass || user.bodyComposition?.proteinMass,
+            bmi: googleFitData.bmi || user.bodyComposition?.bmi,
+            muscleRate: googleFitData.muscleRate || user.bodyComposition?.muscleRate,
+            metabolicAge: googleFitData.metabolicAge || user.bodyComposition?.metabolicAge,
+            weightWithoutFat: googleFitData.weightWithoutFat || user.bodyComposition?.weightWithoutFat,
+          };
+          
+          const updatedUser = {
+            ...user,
+            bodyComposition: updatedBodyComposition,
+          };
+          
+          set({
+            user: updatedUser,
+          });
+          
+          console.log('Body composition updated from Google Fit:', updatedBodyComposition);
+        }
+      },
+
       completeOnboarding: () => {
         const { user } = get();
         console.log('Completing onboarding for user:', user);

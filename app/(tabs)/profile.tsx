@@ -28,11 +28,11 @@ export default function ProfileScreen() {
               console.log('Logout completed, navigating to welcome screen...');
               
               // Navigate immediately after logout
-              router.replace('/');
+              router.replace('/auth/login');
             } catch (error) {
               console.error('Logout error:', error);
               // Force navigation even if logout fails
-              router.replace('/');
+              router.replace('/auth/login');
             }
           },
           style: 'destructive',
@@ -43,7 +43,7 @@ export default function ProfileScreen() {
 
   const handleEditProfile = () => {
     // Navigate to edit profile screen
-    console.log('Edit profile');
+    router.push('/edit-profile');
   };
 
   const handleNotifications = () => {

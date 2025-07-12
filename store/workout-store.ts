@@ -742,7 +742,99 @@ export const useWorkoutStore = create<WorkoutStore>()(
                 duration: (rec.duration as WorkoutDuration) || '1_month',
                 specificGoal,
                 isAIGenerated: true,
-                schedule: [], // Will be generated when user selects the plan
+                schedule: [
+                  {
+                    id: 'day-1',
+                    name: 'Day 1: Full Body',
+                    exercises: [
+                      {
+                        id: 'ex-1',
+                        name: 'Push-ups',
+                        description: 'Basic upper body exercise',
+                        muscleGroup: 'chest',
+                        sets: 3,
+                        reps: 10,
+                        restTime: 60,
+                      },
+                      {
+                        id: 'ex-2',
+                        name: 'Squats',
+                        description: 'Basic lower body exercise',
+                        muscleGroup: 'legs',
+                        sets: 3,
+                        reps: 10,
+                        restTime: 60,
+                      },
+                    ],
+                    restDay: false,
+                  },
+                  {
+                    id: 'day-2',
+                    name: 'Day 2: Rest',
+                    exercises: [],
+                    restDay: true,
+                  },
+                  {
+                    id: 'day-3',
+                    name: 'Day 3: Upper Body',
+                    exercises: [
+                      {
+                        id: 'ex-3',
+                        name: 'Pull-ups',
+                        description: 'Upper body strength',
+                        muscleGroup: 'back',
+                        sets: 3,
+                        reps: 8,
+                        restTime: 90,
+                      },
+                    ],
+                    restDay: false,
+                  },
+                  {
+                    id: 'day-4',
+                    name: 'Day 4: Rest',
+                    exercises: [],
+                    restDay: true,
+                  },
+                  {
+                    id: 'day-5',
+                    name: 'Day 5: Lower Body',
+                    exercises: [
+                      {
+                        id: 'ex-4',
+                        name: 'Lunges',
+                        description: 'Lower body strength',
+                        muscleGroup: 'legs',
+                        sets: 3,
+                        reps: 12,
+                        restTime: 60,
+                      },
+                    ],
+                    restDay: false,
+                  },
+                  {
+                    id: 'day-6',
+                    name: 'Day 6: Rest',
+                    exercises: [],
+                    restDay: true,
+                  },
+                  {
+                    id: 'day-7',
+                    name: 'Day 7: Active Recovery',
+                    exercises: [
+                      {
+                        id: 'ex-5',
+                        name: 'Walking',
+                        description: 'Light cardio',
+                        muscleGroup: 'cardio',
+                        sets: 1,
+                        reps: 30,
+                        restTime: 0,
+                      },
+                    ],
+                    restDay: false,
+                  },
+                ],
               }))
             : [
                 {
@@ -753,7 +845,99 @@ export const useWorkoutStore = create<WorkoutStore>()(
                   duration: '1_month' as WorkoutDuration,
                   specificGoal,
                   isAIGenerated: false,
-                  schedule: [],
+                  schedule: [
+                    {
+                      id: 'day-1',
+                      name: 'Day 1: Full Body',
+                      exercises: [
+                        {
+                          id: 'ex-1',
+                          name: 'Push-ups',
+                          description: 'Basic upper body exercise',
+                          muscleGroup: 'chest',
+                          sets: 3,
+                          reps: 10,
+                          restTime: 60,
+                        },
+                        {
+                          id: 'ex-2',
+                          name: 'Squats',
+                          description: 'Basic lower body exercise',
+                          muscleGroup: 'legs',
+                          sets: 3,
+                          reps: 10,
+                          restTime: 60,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                    {
+                      id: 'day-2',
+                      name: 'Day 2: Rest',
+                      exercises: [],
+                      restDay: true,
+                    },
+                    {
+                      id: 'day-3',
+                      name: 'Day 3: Upper Body',
+                      exercises: [
+                        {
+                          id: 'ex-3',
+                          name: 'Pull-ups',
+                          description: 'Upper body strength',
+                          muscleGroup: 'back',
+                          sets: 3,
+                          reps: 8,
+                          restTime: 90,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                    {
+                      id: 'day-4',
+                      name: 'Day 4: Rest',
+                      exercises: [],
+                      restDay: true,
+                    },
+                    {
+                      id: 'day-5',
+                      name: 'Day 5: Lower Body',
+                      exercises: [
+                        {
+                          id: 'ex-4',
+                          name: 'Lunges',
+                          description: 'Lower body strength',
+                          muscleGroup: 'legs',
+                          sets: 3,
+                          reps: 12,
+                          restTime: 60,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                    {
+                      id: 'day-6',
+                      name: 'Day 6: Rest',
+                      exercises: [],
+                      restDay: true,
+                    },
+                    {
+                      id: 'day-7',
+                      name: 'Day 7: Active Recovery',
+                      exercises: [
+                        {
+                          id: 'ex-5',
+                          name: 'Walking',
+                          description: 'Light cardio',
+                          muscleGroup: 'cardio',
+                          sets: 1,
+                          reps: 30,
+                          restTime: 0,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                  ],
                 },
                 {
                   id: 'plan-2',
@@ -763,7 +947,127 @@ export const useWorkoutStore = create<WorkoutStore>()(
                   duration: '3_month' as WorkoutDuration,
                   specificGoal,
                   isAIGenerated: false,
-                  schedule: [],
+                  schedule: [
+                    {
+                      id: 'day-1',
+                      name: 'Day 1: Chest & Triceps',
+                      exercises: [
+                        {
+                          id: 'ex-1',
+                          name: 'Bench Press',
+                          description: 'Compound chest exercise',
+                          muscleGroup: 'chest',
+                          sets: 4,
+                          reps: 8,
+                          restTime: 120,
+                        },
+                        {
+                          id: 'ex-2',
+                          name: 'Tricep Dips',
+                          description: 'Tricep isolation',
+                          muscleGroup: 'arms',
+                          sets: 3,
+                          reps: 12,
+                          restTime: 60,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                    {
+                      id: 'day-2',
+                      name: 'Day 2: Back & Biceps',
+                      exercises: [
+                        {
+                          id: 'ex-3',
+                          name: 'Pull-ups',
+                          description: 'Back strength',
+                          muscleGroup: 'back',
+                          sets: 4,
+                          reps: 8,
+                          restTime: 120,
+                        },
+                        {
+                          id: 'ex-4',
+                          name: 'Bicep Curls',
+                          description: 'Bicep isolation',
+                          muscleGroup: 'arms',
+                          sets: 3,
+                          reps: 12,
+                          restTime: 60,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                    {
+                      id: 'day-3',
+                      name: 'Day 3: Rest',
+                      exercises: [],
+                      restDay: true,
+                    },
+                    {
+                      id: 'day-4',
+                      name: 'Day 4: Legs',
+                      exercises: [
+                        {
+                          id: 'ex-5',
+                          name: 'Squats',
+                          description: 'Compound leg exercise',
+                          muscleGroup: 'legs',
+                          sets: 4,
+                          reps: 10,
+                          restTime: 120,
+                        },
+                        {
+                          id: 'ex-6',
+                          name: 'Deadlifts',
+                          description: 'Posterior chain',
+                          muscleGroup: 'legs',
+                          sets: 3,
+                          reps: 8,
+                          restTime: 180,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                    {
+                      id: 'day-5',
+                      name: 'Day 5: Shoulders',
+                      exercises: [
+                        {
+                          id: 'ex-7',
+                          name: 'Overhead Press',
+                          description: 'Shoulder strength',
+                          muscleGroup: 'shoulders',
+                          sets: 4,
+                          reps: 8,
+                          restTime: 120,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                    {
+                      id: 'day-6',
+                      name: 'Day 6: Rest',
+                      exercises: [],
+                      restDay: true,
+                    },
+                    {
+                      id: 'day-7',
+                      name: 'Day 7: Cardio',
+                      exercises: [
+                        {
+                          id: 'ex-8',
+                          name: 'Running',
+                          description: 'Cardiovascular training',
+                          muscleGroup: 'cardio',
+                          sets: 1,
+                          reps: 30,
+                          restTime: 0,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                  ],
                 },
                 {
                   id: 'plan-3',
@@ -773,7 +1077,136 @@ export const useWorkoutStore = create<WorkoutStore>()(
                   duration: '6_month' as WorkoutDuration,
                   specificGoal,
                   isAIGenerated: false,
-                  schedule: [],
+                  schedule: [
+                    {
+                      id: 'day-1',
+                      name: 'Day 1: Push',
+                      exercises: [
+                        {
+                          id: 'ex-1',
+                          name: 'Bench Press',
+                          description: 'Heavy compound',
+                          muscleGroup: 'chest',
+                          sets: 5,
+                          reps: 5,
+                          restTime: 180,
+                        },
+                        {
+                          id: 'ex-2',
+                          name: 'Overhead Press',
+                          description: 'Shoulder strength',
+                          muscleGroup: 'shoulders',
+                          sets: 4,
+                          reps: 6,
+                          restTime: 120,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                    {
+                      id: 'day-2',
+                      name: 'Day 2: Pull',
+                      exercises: [
+                        {
+                          id: 'ex-3',
+                          name: 'Deadlifts',
+                          description: 'Posterior chain',
+                          muscleGroup: 'legs',
+                          sets: 5,
+                          reps: 5,
+                          restTime: 240,
+                        },
+                        {
+                          id: 'ex-4',
+                          name: 'Pull-ups',
+                          description: 'Back strength',
+                          muscleGroup: 'back',
+                          sets: 4,
+                          reps: 8,
+                          restTime: 120,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                    {
+                      id: 'day-3',
+                      name: 'Day 3: Rest',
+                      exercises: [],
+                      restDay: true,
+                    },
+                    {
+                      id: 'day-4',
+                      name: 'Day 4: Legs',
+                      exercises: [
+                        {
+                          id: 'ex-5',
+                          name: 'Squats',
+                          description: 'Heavy compound',
+                          muscleGroup: 'legs',
+                          sets: 5,
+                          reps: 5,
+                          restTime: 180,
+                        },
+                        {
+                          id: 'ex-6',
+                          name: 'Romanian Deadlifts',
+                          description: 'Hamstring focus',
+                          muscleGroup: 'legs',
+                          sets: 4,
+                          reps: 8,
+                          restTime: 120,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                    {
+                      id: 'day-5',
+                      name: 'Day 5: Accessory',
+                      exercises: [
+                        {
+                          id: 'ex-7',
+                          name: 'Lateral Raises',
+                          description: 'Shoulder isolation',
+                          muscleGroup: 'shoulders',
+                          sets: 3,
+                          reps: 15,
+                          restTime: 60,
+                        },
+                        {
+                          id: 'ex-8',
+                          name: 'Bicep Curls',
+                          description: 'Arm isolation',
+                          muscleGroup: 'arms',
+                          sets: 3,
+                          reps: 12,
+                          restTime: 60,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                    {
+                      id: 'day-6',
+                      name: 'Day 6: Rest',
+                      exercises: [],
+                      restDay: true,
+                    },
+                    {
+                      id: 'day-7',
+                      name: 'Day 7: Conditioning',
+                      exercises: [
+                        {
+                          id: 'ex-9',
+                          name: 'Sprint Intervals',
+                          description: 'High intensity cardio',
+                          muscleGroup: 'cardio',
+                          sets: 8,
+                          reps: 30,
+                          restTime: 60,
+                        },
+                      ],
+                      restDay: false,
+                    },
+                  ],
                 },
               ];
           
@@ -793,7 +1226,99 @@ export const useWorkoutStore = create<WorkoutStore>()(
               duration: '1_month' as WorkoutDuration,
               specificGoal,
               isAIGenerated: false,
-              schedule: [],
+              schedule: [
+                {
+                  id: 'day-1',
+                  name: 'Day 1: Full Body',
+                  exercises: [
+                    {
+                      id: 'ex-1',
+                      name: 'Push-ups',
+                      description: 'Basic upper body exercise',
+                      muscleGroup: 'chest',
+                      sets: 3,
+                      reps: 10,
+                      restTime: 60,
+                    },
+                    {
+                      id: 'ex-2',
+                      name: 'Squats',
+                      description: 'Basic lower body exercise',
+                      muscleGroup: 'legs',
+                      sets: 3,
+                      reps: 10,
+                      restTime: 60,
+                    },
+                  ],
+                  restDay: false,
+                },
+                {
+                  id: 'day-2',
+                  name: 'Day 2: Rest',
+                  exercises: [],
+                  restDay: true,
+                },
+                {
+                  id: 'day-3',
+                  name: 'Day 3: Upper Body',
+                  exercises: [
+                    {
+                      id: 'ex-3',
+                      name: 'Pull-ups',
+                      description: 'Upper body strength',
+                      muscleGroup: 'back',
+                      sets: 3,
+                      reps: 8,
+                      restTime: 90,
+                    },
+                  ],
+                  restDay: false,
+                },
+                {
+                  id: 'day-4',
+                  name: 'Day 4: Rest',
+                  exercises: [],
+                  restDay: true,
+                },
+                {
+                  id: 'day-5',
+                  name: 'Day 5: Lower Body',
+                  exercises: [
+                    {
+                      id: 'ex-4',
+                      name: 'Lunges',
+                      description: 'Lower body strength',
+                      muscleGroup: 'legs',
+                      sets: 3,
+                      reps: 12,
+                      restTime: 60,
+                    },
+                  ],
+                  restDay: false,
+                },
+                {
+                  id: 'day-6',
+                  name: 'Day 6: Rest',
+                  exercises: [],
+                  restDay: true,
+                },
+                {
+                  id: 'day-7',
+                  name: 'Day 7: Active Recovery',
+                  exercises: [
+                    {
+                      id: 'ex-5',
+                      name: 'Walking',
+                      description: 'Light cardio',
+                      muscleGroup: 'cardio',
+                      sets: 1,
+                      reps: 30,
+                      restTime: 0,
+                    },
+                  ],
+                  restDay: false,
+                },
+              ],
             },
             {
               id: 'plan-2',
@@ -803,7 +1328,127 @@ export const useWorkoutStore = create<WorkoutStore>()(
               duration: '3_month' as WorkoutDuration,
               specificGoal,
               isAIGenerated: false,
-              schedule: [],
+              schedule: [
+                {
+                  id: 'day-1',
+                  name: 'Day 1: Chest & Triceps',
+                  exercises: [
+                    {
+                      id: 'ex-1',
+                      name: 'Bench Press',
+                      description: 'Compound chest exercise',
+                      muscleGroup: 'chest',
+                      sets: 4,
+                      reps: 8,
+                      restTime: 120,
+                    },
+                    {
+                      id: 'ex-2',
+                      name: 'Tricep Dips',
+                      description: 'Tricep isolation',
+                      muscleGroup: 'arms',
+                      sets: 3,
+                      reps: 12,
+                      restTime: 60,
+                    },
+                  ],
+                  restDay: false,
+                },
+                {
+                  id: 'day-2',
+                  name: 'Day 2: Back & Biceps',
+                  exercises: [
+                    {
+                      id: 'ex-3',
+                      name: 'Pull-ups',
+                      description: 'Back strength',
+                      muscleGroup: 'back',
+                      sets: 4,
+                      reps: 8,
+                      restTime: 120,
+                    },
+                    {
+                      id: 'ex-4',
+                      name: 'Bicep Curls',
+                      description: 'Bicep isolation',
+                      muscleGroup: 'arms',
+                      sets: 3,
+                      reps: 12,
+                      restTime: 60,
+                    },
+                  ],
+                  restDay: false,
+                },
+                {
+                  id: 'day-3',
+                  name: 'Day 3: Rest',
+                  exercises: [],
+                  restDay: true,
+                },
+                {
+                  id: 'day-4',
+                  name: 'Day 4: Legs',
+                  exercises: [
+                    {
+                      id: 'ex-5',
+                      name: 'Squats',
+                      description: 'Compound leg exercise',
+                      muscleGroup: 'legs',
+                      sets: 4,
+                      reps: 10,
+                      restTime: 120,
+                    },
+                    {
+                      id: 'ex-6',
+                      name: 'Deadlifts',
+                      description: 'Posterior chain',
+                      muscleGroup: 'legs',
+                      sets: 3,
+                      reps: 8,
+                      restTime: 180,
+                    },
+                  ],
+                  restDay: false,
+                },
+                {
+                  id: 'day-5',
+                  name: 'Day 5: Shoulders',
+                  exercises: [
+                    {
+                      id: 'ex-7',
+                      name: 'Overhead Press',
+                      description: 'Shoulder strength',
+                      muscleGroup: 'shoulders',
+                      sets: 4,
+                      reps: 8,
+                      restTime: 120,
+                    },
+                  ],
+                  restDay: false,
+                },
+                {
+                  id: 'day-6',
+                  name: 'Day 6: Rest',
+                  exercises: [],
+                  restDay: true,
+                },
+                {
+                  id: 'day-7',
+                  name: 'Day 7: Cardio',
+                  exercises: [
+                    {
+                      id: 'ex-8',
+                      name: 'Running',
+                      description: 'Cardiovascular training',
+                      muscleGroup: 'cardio',
+                      sets: 1,
+                      reps: 30,
+                      restTime: 0,
+                    },
+                  ],
+                  restDay: false,
+                },
+              ],
             },
             {
               id: 'plan-3',
@@ -813,7 +1458,136 @@ export const useWorkoutStore = create<WorkoutStore>()(
               duration: '6_month' as WorkoutDuration,
               specificGoal,
               isAIGenerated: false,
-              schedule: [],
+              schedule: [
+                {
+                  id: 'day-1',
+                  name: 'Day 1: Push',
+                  exercises: [
+                    {
+                      id: 'ex-1',
+                      name: 'Bench Press',
+                      description: 'Heavy compound',
+                      muscleGroup: 'chest',
+                      sets: 5,
+                      reps: 5,
+                      restTime: 180,
+                    },
+                    {
+                      id: 'ex-2',
+                      name: 'Overhead Press',
+                      description: 'Shoulder strength',
+                      muscleGroup: 'shoulders',
+                      sets: 4,
+                      reps: 6,
+                      restTime: 120,
+                    },
+                  ],
+                  restDay: false,
+                },
+                {
+                  id: 'day-2',
+                  name: 'Day 2: Pull',
+                  exercises: [
+                    {
+                      id: 'ex-3',
+                      name: 'Deadlifts',
+                      description: 'Posterior chain',
+                      muscleGroup: 'legs',
+                      sets: 5,
+                      reps: 5,
+                      restTime: 240,
+                    },
+                    {
+                      id: 'ex-4',
+                      name: 'Pull-ups',
+                      description: 'Back strength',
+                      muscleGroup: 'back',
+                      sets: 4,
+                      reps: 8,
+                      restTime: 120,
+                    },
+                  ],
+                  restDay: false,
+                },
+                {
+                  id: 'day-3',
+                  name: 'Day 3: Rest',
+                  exercises: [],
+                  restDay: true,
+                },
+                {
+                  id: 'day-4',
+                  name: 'Day 4: Legs',
+                  exercises: [
+                    {
+                      id: 'ex-5',
+                      name: 'Squats',
+                      description: 'Heavy compound',
+                      muscleGroup: 'legs',
+                      sets: 5,
+                      reps: 5,
+                      restTime: 180,
+                    },
+                    {
+                      id: 'ex-6',
+                      name: 'Romanian Deadlifts',
+                      description: 'Hamstring focus',
+                      muscleGroup: 'legs',
+                      sets: 4,
+                      reps: 8,
+                      restTime: 120,
+                    },
+                  ],
+                  restDay: false,
+                },
+                {
+                  id: 'day-5',
+                  name: 'Day 5: Accessory',
+                  exercises: [
+                    {
+                      id: 'ex-7',
+                      name: 'Lateral Raises',
+                      description: 'Shoulder isolation',
+                      muscleGroup: 'shoulders',
+                      sets: 3,
+                      reps: 15,
+                      restTime: 60,
+                    },
+                    {
+                      id: 'ex-8',
+                      name: 'Bicep Curls',
+                      description: 'Arm isolation',
+                      muscleGroup: 'arms',
+                      sets: 3,
+                      reps: 12,
+                      restTime: 60,
+                    },
+                  ],
+                  restDay: false,
+                },
+                {
+                  id: 'day-6',
+                  name: 'Day 6: Rest',
+                  exercises: [],
+                  restDay: true,
+                },
+                {
+                  id: 'day-7',
+                  name: 'Day 7: Conditioning',
+                  exercises: [
+                    {
+                      id: 'ex-9',
+                      name: 'Sprint Intervals',
+                      description: 'High intensity cardio',
+                      muscleGroup: 'cardio',
+                      sets: 8,
+                      reps: 30,
+                      restTime: 60,
+                    },
+                  ],
+                  restDay: false,
+                },
+              ],
             },
           ];
           
@@ -849,51 +1623,60 @@ export const useWorkoutStore = create<WorkoutStore>()(
         const progressFactor = progress / 100;
         let progressMeasurements: Record<string, number> = {};
         
+        // Ensure we have valid original measurements
+        const baseMeasurements = {
+          shoulders: originalMeasurements.shoulders || 50,
+          chest: originalMeasurements.chest || 50,
+          arms: originalMeasurements.arms || 50,
+          waist: originalMeasurements.waist || 50,
+          legs: originalMeasurements.legs || 50,
+        };
+        
         switch (goal) {
           case 'build_muscle':
             progressMeasurements = {
-              shoulders: originalMeasurements.shoulders + (15 * progressFactor), // +15% max
-              chest: originalMeasurements.chest + (20 * progressFactor), // +20% max
-              arms: originalMeasurements.arms + (25 * progressFactor), // +25% max
-              waist: originalMeasurements.waist + (5 * progressFactor), // +5% max
-              legs: originalMeasurements.legs + (18 * progressFactor), // +18% max
+              shoulders: baseMeasurements.shoulders + (15 * progressFactor), // +15% max
+              chest: baseMeasurements.chest + (20 * progressFactor), // +20% max
+              arms: baseMeasurements.arms + (25 * progressFactor), // +25% max
+              waist: baseMeasurements.waist + (5 * progressFactor), // +5% max
+              legs: baseMeasurements.legs + (18 * progressFactor), // +18% max
             };
             break;
             
           case 'weight_loss':
             progressMeasurements = {
-              shoulders: originalMeasurements.shoulders - (5 * progressFactor), // -5% max
-              chest: originalMeasurements.chest - (8 * progressFactor), // -8% max
-              arms: originalMeasurements.arms - (3 * progressFactor), // -3% max
-              waist: originalMeasurements.waist - (20 * progressFactor), // -20% max
-              legs: originalMeasurements.legs - (10 * progressFactor), // -10% max
+              shoulders: baseMeasurements.shoulders - (5 * progressFactor), // -5% max
+              chest: baseMeasurements.chest - (8 * progressFactor), // -8% max
+              arms: baseMeasurements.arms - (3 * progressFactor), // -3% max
+              waist: baseMeasurements.waist - (20 * progressFactor), // -20% max
+              legs: baseMeasurements.legs - (10 * progressFactor), // -10% max
             };
             break;
             
           case 'increase_strength':
             progressMeasurements = {
-              shoulders: originalMeasurements.shoulders + (12 * progressFactor), // +12% max
-              chest: originalMeasurements.chest + (15 * progressFactor), // +15% max
-              arms: originalMeasurements.arms + (20 * progressFactor), // +20% max
-              waist: originalMeasurements.waist + (3 * progressFactor), // +3% max
-              legs: originalMeasurements.legs + (15 * progressFactor), // +15% max
+              shoulders: baseMeasurements.shoulders + (12 * progressFactor), // +12% max
+              chest: baseMeasurements.chest + (15 * progressFactor), // +15% max
+              arms: baseMeasurements.arms + (20 * progressFactor), // +20% max
+              waist: baseMeasurements.waist + (3 * progressFactor), // +3% max
+              legs: baseMeasurements.legs + (15 * progressFactor), // +15% max
             };
             break;
             
           default:
             // General fitness improvement
             progressMeasurements = {
-              shoulders: originalMeasurements.shoulders + (8 * progressFactor),
-              chest: originalMeasurements.chest + (10 * progressFactor),
-              arms: originalMeasurements.arms + (12 * progressFactor),
-              waist: originalMeasurements.waist - (5 * progressFactor),
-              legs: originalMeasurements.legs + (10 * progressFactor),
+              shoulders: baseMeasurements.shoulders + (8 * progressFactor),
+              chest: baseMeasurements.chest + (10 * progressFactor),
+              arms: baseMeasurements.arms + (12 * progressFactor),
+              waist: baseMeasurements.waist - (5 * progressFactor),
+              legs: baseMeasurements.legs + (10 * progressFactor),
             };
         }
         
         // Ensure measurements stay within reasonable bounds (20-100)
         Object.keys(progressMeasurements).forEach(key => {
-          progressMeasurements[key] = Math.max(20, Math.min(100, progressMeasurements[key]));
+          progressMeasurements[key] = Math.max(20, Math.min(100, Math.round(progressMeasurements[key])));
         });
         
         set({ progressMeasurements });

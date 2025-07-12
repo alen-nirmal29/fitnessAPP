@@ -15,7 +15,7 @@ interface ButtonProps extends TouchableOpacityProps {
   title: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'outline' | 'text';
-  size?: 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large' | 'square';
   isLoading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
@@ -75,6 +75,8 @@ export default function Button({
         return styles.mediumButton;
       case 'large':
         return styles.largeButton;
+      case 'square':
+        return styles.squareButton;
       default:
         return styles.mediumButton;
     }
@@ -154,7 +156,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
-    minWidth: 100,
+    minWidth: 120,
   },
   gradient: {
     borderRadius: 12,
@@ -199,6 +201,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     minHeight: 64,
     borderRadius: 12,
+  },
+  squareButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    minHeight: 56,
+    minWidth: 56,
+    borderRadius: 12,
+    aspectRatio: 1,
   },
   primaryText: {
     color: '#fff',

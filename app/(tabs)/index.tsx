@@ -1,123 +1,22 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Dumbbell, Calendar, TrendingUp, Award } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { router } from 'expo-router';
+import { Dumbbell, Award, TrendingUp, Calendar, Clock, Target, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import Card from '@/components/Card';
+import Human2DModel from '@/components/Human2DModel';
 import Button from '@/components/Button';
+import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
-import HumanModel3D from '@/components/HumanModel3D';
 import { useAuthStore } from '@/store/auth-store';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useWorkoutSessionStore } from '@/store/workout-session-store';
-
-// Default workout plans if no current plan exists
-const defaultWorkouts = [
-  {
-    id: 'default-1',
-    name: 'Upper Body Strength',
-    description: 'Focus on chest, shoulders, and arms',
-    difficulty: 'intermediate' as const,
-    duration: '1_month' as const,
-    specificGoal: 'increase_strength' as const,
-    isAIGenerated: false,
-    schedule: [
-      {
-        id: 'day-1',
-        name: 'Upper Body Strength',
-        exercises: [
-          {
-            id: 'ex-1',
-            name: 'Push-ups',
-            description: 'Standard push-ups for chest and triceps',
-            muscleGroup: 'chest',
-            sets: 3,
-            reps: 12,
-            restTime: 60,
-          },
-          {
-            id: 'ex-2',
-            name: 'Pull-ups',
-            description: 'Pull your body up to the bar',
-            muscleGroup: 'back',
-            sets: 3,
-            reps: 8,
-            restTime: 90,
-          },
-          {
-            id: 'ex-3',
-            name: 'Shoulder Press',
-            description: 'Press weights overhead',
-            muscleGroup: 'shoulders',
-            sets: 3,
-            reps: 10,
-            restTime: 75,
-          },
-          {
-            id: 'ex-4',
-            name: 'Bicep Curls',
-            description: 'Curl weights to work biceps',
-            muscleGroup: 'arms',
-            sets: 3,
-            reps: 12,
-            restTime: 60,
-          }
-        ],
-        restDay: false,
-      }
-    ],
-  },
-  {
-    id: 'default-2',
-    name: 'Lower Body Power',
-    description: 'Focus on legs and glutes',
-    difficulty: 'intermediate' as const,
-    duration: '1_month' as const,
-    specificGoal: 'build_muscle' as const,
-    isAIGenerated: false,
-    schedule: [
-      {
-        id: 'day-2',
-        name: 'Lower Body Power',
-        exercises: [
-          {
-            id: 'ex-5',
-            name: 'Squats',
-            description: 'Bend knees and lower body, then rise',
-            muscleGroup: 'legs',
-            sets: 4,
-            reps: 12,
-            restTime: 90,
-          },
-          {
-            id: 'ex-6',
-            name: 'Lunges',
-            description: 'Step forward and lower body',
-            muscleGroup: 'legs',
-            sets: 3,
-            reps: 10,
-            restTime: 75,
-          },
-          {
-            id: 'ex-7',
-            name: 'Calf Raises',
-            description: 'Rise up on your toes',
-            muscleGroup: 'legs',
-            sets: 3,
-            reps: 15,
-            restTime: 45,
-          }
-        ],
-        restDay: false,
-      }
-    ],
-  }
-];
+import { defaultWorkouts } from '@/constants/workouts';
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
   const { currentPlan, setCurrentPlan } = useWorkoutStore();
   const { workoutStats, getTodayWorkouts } = useWorkoutSessionStore();
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
 
   // Move setCurrentPlan to useEffect to avoid state update during render
   useEffect(() => {
@@ -176,7 +75,7 @@ export default function HomeScreen() {
   };
 
   const handleViewComparison = () => {
-    router.push('/(tabs)/progress');
+    setShowComparisonModal(true);
   };
 
   // Calculate weekly progress based on real data
@@ -307,19 +206,25 @@ export default function HomeScreen() {
       )}
 
       <Text style={styles.sectionTitle}>Body Transformation</Text>
-      
       <Card style={styles.transformationCard}>
         <Text style={styles.transformationText}>
           Track your progress and see how your body transforms over time
         </Text>
-        
-        <HumanModel3D 
-          user={user}
-          goalMeasurements={goalMeasurements}
-          showComparison={true}
-          interactive={false}
-        />
-        
+        <View style={styles.verticalModels}>
+          <Text style={styles.modelLabel}>Current</Text>
+          <Human2DModel 
+            user={user}
+            interactive={false}
+            style={styles.modelNormal}
+          />
+          <Text style={styles.modelLabel}>Goal</Text>
+          <Human2DModel 
+            user={user}
+            goalMeasurements={goalMeasurements}
+            interactive={false}
+            style={styles.modelNormal}
+          />
+        </View>
         <Button
           title="View Full Comparison"
           onPress={handleViewComparison}
@@ -327,6 +232,26 @@ export default function HomeScreen() {
           style={styles.viewButton}
         />
       </Card>
+
+      <Modal
+        visible={showComparisonModal}
+        onRequestClose={() => setShowComparisonModal(false)}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowComparisonModal(false)}>
+            <X size={24} color={Colors.dark.text} />
+          </TouchableOpacity>
+          <Human2DModel 
+            user={user}
+            goalMeasurements={goalMeasurements}
+            showComparison={true}
+            interactive={false}
+            style={styles.fullModel}
+          />
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -515,5 +440,56 @@ const styles = StyleSheet.create({
   },
   viewButton: {
     marginTop: 16,
+  },
+  modelContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modelWrapper: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  smallModel: {
+    width: '100%',
+    height: 150, // Reduced height for smaller models
+    transform: [{ scale: 0.8 }], // Scale down the models
+  },
+  fullModel: {
+    width: '100%',
+    height: '100%',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 1,
+  },
+  verticalModels: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 16,
+    width: '100%',
+  },
+  modelNormal: {
+    width: 320,
+    height: 400,
+    marginVertical: 12,
+    alignSelf: 'center',
+  },
+  modelLabel: {
+    fontSize: 16,
+    color: Colors.dark.text,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+    alignSelf: 'center',
   },
 });

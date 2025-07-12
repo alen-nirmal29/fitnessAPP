@@ -166,9 +166,13 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   backButton: {
-    flex: 0.4,
+    flex: 0.7,
+    minWidth: 0,
+    paddingHorizontal: 4,
   },
   completeButton: {
-    flex: 0.6,
+    flex: 1.5,
+    minWidth: 0,
+    paddingHorizontal: 16,
   },
 });

@@ -107,14 +107,15 @@ export default function WelcomeScreen() {
               title="Get Started"
               onPress={handleGetStarted}
               variant="primary"
-              size="large"
-              style={styles.button}
+              size="xlarge"
+              style={[styles.button, {minHeight: 64}]}
             />
             <Button
               title="I already have an account"
               onPress={handleLogin}
               variant="outline"
-              style={styles.button}
+              size="xlarge"
+              style={[styles.button, {minHeight: 64}]}
             />
           </View>
         </View>

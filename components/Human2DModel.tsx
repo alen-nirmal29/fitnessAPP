@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, PanResponder, Dimensions } from 'react-native';
 import { Svg, Ellipse, Line, Circle, G, Path, Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 import Colors from '@/constants/colors';
 import { UserProfile } from '@/types/user';
@@ -12,6 +12,7 @@ interface Human2DModelProps {
   onMeasurementChange?: (measurements: Record<string, number>) => void;
   progressMeasurements?: Record<string, number>; // New prop for post-workout measurements
   showProgress?: boolean; // New prop to show progress comparison
+  style?: any; // Add style prop for custom styling
 }
 
 type AnchorPoint = {
@@ -32,6 +33,7 @@ export default function Human2DModel({
   onMeasurementChange,
   progressMeasurements,
   showProgress = false,
+  style,
 }: Human2DModelProps) {
   const initialMeasurements = useMemo(() => ({
     shoulders: user?.currentMeasurements?.shoulders || 50,
@@ -61,18 +63,50 @@ export default function Human2DModel({
   const [viewMode, setViewMode] = useState<'front' | 'back'>('front');
   
   const isFemale = user?.gender === 'female';
-  const centerX = (showComparison || showProgress) ? 100 : 150;
+  const centerX = (showComparison || showProgress) ? 120 : 160;
   
-  // Calculate body proportions based on measurements
+  // Calculate body proportions based on measurements and user data
   const bodyProps = useMemo(() => {
+    // Base calculations from measurements
     const shoulderW = (measurements.shoulders / 50) * (isFemale ? 35 : 45);
     const chestW = (measurements.chest / 50) * (isFemale ? 32 : 40);
     const waistW = (measurements.waist / 50) * (isFemale ? 28 : 35);
     const armW = (measurements.arms / 50) * (isFemale ? 8 : 12);
     const legW = (measurements.legs / 50) * (isFemale ? 15 : 20);
     
-    return { shoulderW, chestW, waistW, armW, legW };
-  }, [measurements, isFemale]);
+    // Enhanced calculations based on user data
+    let enhancedProps = { shoulderW, chestW, waistW, armW, legW };
+    
+    if (user) {
+      // Height factor (taller people have larger proportions)
+      const heightFactor = user.height ? (user.height / 170) : 1;
+      
+      // Weight factor (heavier people have larger proportions)
+      const weightFactor = user.weight ? Math.sqrt(user.weight / 70) : 1;
+      
+      // Gender factor
+      const genderFactor = isFemale ? 0.9 : 1.1;
+      
+      // Muscle mass factor (if available from Google Fit)
+      const muscleMassFactor = user.bodyComposition?.muscleMass ? 
+        (user.bodyComposition.muscleMass / 40) : 1; // Assuming 40kg is average muscle mass
+      
+      // Body fat factor (affects waist size)
+      const bodyFatFactor = user.bodyComposition?.bodyFat ? 
+        (user.bodyComposition.bodyFat / 20) : 1; // Assuming 20% is average
+      
+      // Apply factors to proportions
+      enhancedProps = {
+        shoulderW: shoulderW * heightFactor * genderFactor * muscleMassFactor,
+        chestW: chestW * heightFactor * weightFactor * muscleMassFactor,
+        waistW: waistW * heightFactor * weightFactor * bodyFatFactor,
+        armW: armW * heightFactor * muscleMassFactor,
+        legW: legW * heightFactor * muscleMassFactor,
+      };
+    }
+    
+    return enhancedProps;
+  }, [measurements, isFemale, user]);
   
   // View toggle handler
   const toggleView = useCallback(() => {
@@ -161,6 +195,33 @@ export default function Human2DModel({
   const closeSlider = useCallback(() => {
     setSelectedAnchor(null);
   }, []);
+
+  // Add drag handling for anchor points
+  const handleAnchorDrag = useCallback((anchorName: string, deltaX: number) => {
+    if (!interactive) return;
+    
+    const anchor = anchorPoints.find(a => a.name === anchorName);
+    if (anchor) {
+      // Increased sensitivity for better control
+      const sensitivity = 0.8;
+      const newValue = Math.min(
+        Math.max(anchor.value + deltaX * sensitivity, anchor.min), 
+        anchor.max
+      );
+      
+      const newMeasurements = { ...measurements, [anchorName]: newValue };
+      setMeasurements(newMeasurements);
+      
+      // Update the anchor point value as well
+      const updatedAnchorPoints = anchorPoints.map(a => 
+        a.name === anchorName ? { ...a, value: newValue } : a
+      );
+      
+      if (onMeasurementChange) {
+        onMeasurementChange(newMeasurements);
+      }
+    }
+  }, [anchorPoints, interactive, measurements, onMeasurementChange]);
 
   // Render human body based on view mode
   const renderHumanBody = () => {
@@ -356,11 +417,11 @@ export default function Human2DModel({
           />
         )}
     
-        {/* Arms - more realistic muscle structure */}
+        {/* Arms - more realistic upper arm and forearm structure */}
         <G>
-          {/* Left arm - upper arm (bicep/tricep) */}
+          {/* Left arm - upper arm */}
           <Path
-            d={`M ${centerX - bodyProps.shoulderW - 5} 95 Q ${centerX - bodyProps.shoulderW - 12} 100 ${centerX - bodyProps.shoulderW - 10} 130 Q ${centerX - bodyProps.shoulderW - 6} 132 ${centerX - bodyProps.shoulderW - 2} 130 Q ${centerX - bodyProps.shoulderW} 100 ${centerX - bodyProps.shoulderW - 5} 95`}
+            d={`M ${centerX - bodyProps.shoulderW - 5} 95 Q ${centerX - bodyProps.shoulderW - 12 - bodyProps.armW} 100 ${centerX - bodyProps.shoulderW - 10 - bodyProps.armW} 130 Q ${centerX - bodyProps.shoulderW - 6 - bodyProps.armW} 132 ${centerX - bodyProps.shoulderW - 2 - bodyProps.armW} 130 Q ${centerX - bodyProps.shoulderW - bodyProps.armW} 100 ${centerX - bodyProps.shoulderW - 5} 95`}
             fill="url(#skinGradient)"
             stroke={isFemale ? '#E8B4B8' : '#A8C8E8'}
             strokeWidth="1.2"
@@ -368,7 +429,7 @@ export default function Human2DModel({
           
           {/* Left forearm */}
           <Path
-            d={`M ${centerX - bodyProps.shoulderW - 8} 132 Q ${centerX - bodyProps.shoulderW - 10} 135 ${centerX - bodyProps.shoulderW - 9} 165 Q ${centerX - bodyProps.shoulderW - 5} 167 ${centerX - bodyProps.shoulderW - 3} 165 Q ${centerX - bodyProps.shoulderW - 4} 135 ${centerX - bodyProps.shoulderW - 8} 132`}
+            d={`M ${centerX - bodyProps.shoulderW - 8 - bodyProps.armW/2} 132 Q ${centerX - bodyProps.shoulderW - 10 - bodyProps.armW/2} 135 ${centerX - bodyProps.shoulderW - 9 - bodyProps.armW/2} 165 Q ${centerX - bodyProps.shoulderW - 5 - bodyProps.armW/2} 167 ${centerX - bodyProps.shoulderW - 3 - bodyProps.armW/2} 165 Q ${centerX - bodyProps.shoulderW - 4 - bodyProps.armW/2} 135 ${centerX - bodyProps.shoulderW - 8 - bodyProps.armW/2} 132`}
             fill="url(#skinGradient)"
             stroke={isFemale ? '#E8B4B8' : '#A8C8E8'}
             strokeWidth="1.2"
@@ -376,7 +437,7 @@ export default function Human2DModel({
           
           {/* Left hand */}
           <Ellipse
-            cx={centerX - bodyProps.shoulderW - 6}
+            cx={centerX - bodyProps.shoulderW - 6 - bodyProps.armW/2}
             cy={172}
             rx={5}
             ry={8}
@@ -387,7 +448,7 @@ export default function Human2DModel({
           
           {/* Right arm - upper arm */}
           <Path
-            d={`M ${centerX + bodyProps.shoulderW + 5} 95 Q ${centerX + bodyProps.shoulderW + 12} 100 ${centerX + bodyProps.shoulderW + 10} 130 Q ${centerX + bodyProps.shoulderW + 6} 132 ${centerX + bodyProps.shoulderW + 2} 130 Q ${centerX + bodyProps.shoulderW} 100 ${centerX + bodyProps.shoulderW + 5} 95`}
+            d={`M ${centerX + bodyProps.shoulderW + 5} 95 Q ${centerX + bodyProps.shoulderW + 12 + bodyProps.armW} 100 ${centerX + bodyProps.shoulderW + 10 + bodyProps.armW} 130 Q ${centerX + bodyProps.shoulderW + 6 + bodyProps.armW} 132 ${centerX + bodyProps.shoulderW + 2 + bodyProps.armW} 130 Q ${centerX + bodyProps.shoulderW + bodyProps.armW} 100 ${centerX + bodyProps.shoulderW + 5} 95`}
             fill="url(#skinGradient)"
             stroke={isFemale ? '#E8B4B8' : '#A8C8E8'}
             strokeWidth="1.2"
@@ -395,7 +456,7 @@ export default function Human2DModel({
           
           {/* Right forearm */}
           <Path
-            d={`M ${centerX + bodyProps.shoulderW + 8} 132 Q ${centerX + bodyProps.shoulderW + 10} 135 ${centerX + bodyProps.shoulderW + 9} 165 Q ${centerX + bodyProps.shoulderW + 5} 167 ${centerX + bodyProps.shoulderW + 3} 165 Q ${centerX + bodyProps.shoulderW + 4} 135 ${centerX + bodyProps.shoulderW + 8} 132`}
+            d={`M ${centerX + bodyProps.shoulderW + 8 + bodyProps.armW/2} 132 Q ${centerX + bodyProps.shoulderW + 10 + bodyProps.armW/2} 135 ${centerX + bodyProps.shoulderW + 9 + bodyProps.armW/2} 165 Q ${centerX + bodyProps.shoulderW + 5 + bodyProps.armW/2} 167 ${centerX + bodyProps.shoulderW + 3 + bodyProps.armW/2} 165 Q ${centerX + bodyProps.shoulderW + 4 + bodyProps.armW/2} 135 ${centerX + bodyProps.shoulderW + 8 + bodyProps.armW/2} 132`}
             fill="url(#skinGradient)"
             stroke={isFemale ? '#E8B4B8' : '#A8C8E8'}
             strokeWidth="1.2"
@@ -403,7 +464,7 @@ export default function Human2DModel({
           
           {/* Right hand */}
           <Ellipse
-            cx={centerX + bodyProps.shoulderW + 6}
+            cx={centerX + bodyProps.shoulderW + 6 + bodyProps.armW/2}
             cy={172}
             rx={5}
             ry={8}
@@ -415,8 +476,8 @@ export default function Human2DModel({
           {/* Muscle definition for arms */}
           {!isFemale && !isBackView && (
             <G opacity={0.2}>
-              <Path d={`M ${centerX - bodyProps.shoulderW - 8} 110 Q ${centerX - bodyProps.shoulderW - 6} 108 ${centerX - bodyProps.shoulderW - 4} 110`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
-              <Path d={`M ${centerX + bodyProps.shoulderW + 4} 110 Q ${centerX + bodyProps.shoulderW + 6} 108 ${centerX + bodyProps.shoulderW + 8} 110`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
+              <Path d={`M ${centerX - bodyProps.shoulderW - 8 - bodyProps.armW/2} 110 Q ${centerX - bodyProps.shoulderW - 6 - bodyProps.armW/2} 108 ${centerX - bodyProps.shoulderW - 4 - bodyProps.armW/2} 110`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
+              <Path d={`M ${centerX + bodyProps.shoulderW + 4 + bodyProps.armW/2} 110 Q ${centerX + bodyProps.shoulderW + 6 + bodyProps.armW/2} 108 ${centerX + bodyProps.shoulderW + 8 + bodyProps.armW/2} 110`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
             </G>
           )}
         </G>
@@ -425,7 +486,7 @@ export default function Human2DModel({
         <G>
           {/* Left thigh */}
           <Path
-            d={`M ${centerX - 15} 185 Q ${centerX - 18} 190 ${centerX - 16} 240 Q ${centerX - 12} 242 ${centerX - 8} 240 Q ${centerX - 10} 190 ${centerX - 15} 185`}
+            d={`M ${centerX - 15} 185 Q ${centerX - 18 - bodyProps.legW} 190 ${centerX - 16 - bodyProps.legW} 240 Q ${centerX - 12 - bodyProps.legW} 242 ${centerX - 8 - bodyProps.legW} 240 Q ${centerX - 10 - bodyProps.legW} 190 ${centerX - 15} 185`}
             fill="url(#skinGradient)"
             stroke={isFemale ? '#E8B4B8' : '#A8C8E8'}
             strokeWidth="1.2"
@@ -433,7 +494,7 @@ export default function Human2DModel({
           
           {/* Left calf */}
           <Path
-            d={`M ${centerX - 14} 242 Q ${centerX - 16} 245 ${centerX - 14} 295 Q ${centerX - 10} 297 ${centerX - 6} 295 Q ${centerX - 8} 245 ${centerX - 14} 242`}
+            d={`M ${centerX - 14 - bodyProps.legW/2} 242 Q ${centerX - 16 - bodyProps.legW/2} 245 ${centerX - 14 - bodyProps.legW/2} 295 Q ${centerX - 10 - bodyProps.legW/2} 297 ${centerX - 6 - bodyProps.legW/2} 295 Q ${centerX - 8 - bodyProps.legW/2} 245 ${centerX - 14 - bodyProps.legW/2} 242`}
             fill="url(#skinGradient)"
             stroke={isFemale ? '#E8B4B8' : '#A8C8E8'}
             strokeWidth="1.2"
@@ -441,7 +502,7 @@ export default function Human2DModel({
           
           {/* Left foot */}
           <Ellipse
-            cx={centerX - 10}
+            cx={centerX - 10 - bodyProps.legW/2}
             cy={302}
             rx={12}
             ry={6}
@@ -452,7 +513,7 @@ export default function Human2DModel({
           
           {/* Right thigh */}
           <Path
-            d={`M ${centerX + 15} 185 Q ${centerX + 18} 190 ${centerX + 16} 240 Q ${centerX + 12} 242 ${centerX + 8} 240 Q ${centerX + 10} 190 ${centerX + 15} 185`}
+            d={`M ${centerX + 15} 185 Q ${centerX + 18 + bodyProps.legW} 190 ${centerX + 16 + bodyProps.legW} 240 Q ${centerX + 12 + bodyProps.legW} 242 ${centerX + 8 + bodyProps.legW} 240 Q ${centerX + 10 + bodyProps.legW} 190 ${centerX + 15} 185`}
             fill="url(#skinGradient)"
             stroke={isFemale ? '#E8B4B8' : '#A8C8E8'}
             strokeWidth="1.2"
@@ -460,7 +521,7 @@ export default function Human2DModel({
           
           {/* Right calf */}
           <Path
-            d={`M ${centerX + 14} 242 Q ${centerX + 16} 245 ${centerX + 14} 295 Q ${centerX + 10} 297 ${centerX + 6} 295 Q ${centerX + 8} 245 ${centerX + 14} 242`}
+            d={`M ${centerX + 14 + bodyProps.legW/2} 242 Q ${centerX + 16 + bodyProps.legW/2} 245 ${centerX + 14 + bodyProps.legW/2} 295 Q ${centerX + 10 + bodyProps.legW/2} 297 ${centerX + 6 + bodyProps.legW/2} 295 Q ${centerX + 8 + bodyProps.legW/2} 245 ${centerX + 14 + bodyProps.legW/2} 242`}
             fill="url(#skinGradient)"
             stroke={isFemale ? '#E8B4B8' : '#A8C8E8'}
             strokeWidth="1.2"
@@ -468,7 +529,7 @@ export default function Human2DModel({
           
           {/* Right foot */}
           <Ellipse
-            cx={centerX + 10}
+            cx={centerX + 10 + bodyProps.legW/2}
             cy={302}
             rx={12}
             ry={6}
@@ -481,11 +542,11 @@ export default function Human2DModel({
           {!isFemale && !isBackView && (
             <G opacity={0.2}>
               {/* Quadriceps lines */}
-              <Path d={`M ${centerX - 12} 210 Q ${centerX - 10} 208 ${centerX - 8} 210`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
-              <Path d={`M ${centerX + 8} 210 Q ${centerX + 10} 208 ${centerX + 12} 210`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
+              <Path d={`M ${centerX - 12 - bodyProps.legW/2} 210 Q ${centerX - 10 - bodyProps.legW/2} 208 ${centerX - 8 - bodyProps.legW/2} 210`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
+              <Path d={`M ${centerX + 8 + bodyProps.legW/2} 210 Q ${centerX + 10 + bodyProps.legW/2} 208 ${centerX + 12 + bodyProps.legW/2} 210`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
               {/* Calf definition */}
-              <Path d={`M ${centerX - 12} 265 Q ${centerX - 10} 263 ${centerX - 8} 265`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
-              <Path d={`M ${centerX + 8} 265 Q ${centerX + 10} 263 ${centerX + 12} 265`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
+              <Path d={`M ${centerX - 12 - bodyProps.legW/2} 265 Q ${centerX - 10 - bodyProps.legW/2} 263 ${centerX - 8 - bodyProps.legW/2} 265`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
+              <Path d={`M ${centerX + 8 + bodyProps.legW/2} 265 Q ${centerX + 10 + bodyProps.legW/2} 263 ${centerX + 12 + bodyProps.legW/2} 265`} stroke="#A8C8E8" strokeWidth="1" fill="none" />
             </G>
           )}
         </G>
@@ -575,81 +636,11 @@ export default function Human2DModel({
         
         {/* Goal body - same structure as current body but with goal measurements */}
         <G transform={`translate(${goalCenterX - centerX}, 0)`}>
-          {/* Head */}
+          {/* Head - more realistic proportions */}
           <Ellipse
             cx={centerX}
             cy={45}
-            rx={20}
-            ry={24}
-            fill="none"
-            stroke={Colors.dark.accent}
-            strokeWidth="2"
-            strokeDasharray="3,3"
-          />
-          
-          {/* Hair */}
-          {viewMode === 'front' ? (
-            <Path
-              d={`M ${centerX - 20} 28 Q ${centerX} 18 ${centerX + 20} 28 Q ${centerX + 18} 35 ${centerX + 10} 30 Q ${centerX} 22 ${centerX - 10} 30 Q ${centerX - 18} 35 ${centerX - 20} 28`}
-              fill="none"
-              stroke={Colors.dark.accent}
-              strokeWidth="2"
-              strokeDasharray="3,3"
-            />
-          ) : (
-            <Ellipse
-              cx={centerX}
-              cy={30}
-              rx={22}
-              ry={18}
-              fill="none"
-              stroke={Colors.dark.accent}
-              strokeWidth="2"
-              strokeDasharray="3,3"
-            />
-          )}
-          
-          {/* Neck */}
-          <Ellipse
-            cx={centerX}
-            cy={73}
-            rx={6}
-            ry={10}
-            fill="none"
-            stroke={Colors.dark.accent}
-            strokeWidth="2"
-            strokeDasharray="3,3"
-          />
-          
-          {/* Shoulders */}
-          <Ellipse
-            cx={centerX}
-            cy={85}
-            rx={goalProps.shoulderW}
-            ry={8}
-            fill="none"
-            stroke={Colors.dark.accent}
-            strokeWidth="2"
-            strokeDasharray="3,3"
-          />
-          
-          {/* Chest */}
-          <Ellipse
-            cx={centerX}
-            cy={110}
-            rx={goalProps.chestW}
-            ry={28}
-            fill="none"
-            stroke={Colors.dark.accent}
-            strokeWidth="2"
-            strokeDasharray="3,3"
-          />
-          
-          {/* Waist */}
-          <Ellipse
-            cx={centerX}
-            cy={160}
-            rx={goalProps.waistW}
+            rx={18}
             ry={22}
             fill="none"
             stroke={Colors.dark.accent}
@@ -657,49 +648,252 @@ export default function Human2DModel({
             strokeDasharray="3,3"
           />
           
-          {/* Arms */}
+          {/* Head shadow/depth */}
           <Ellipse
-            cx={centerX - goalProps.shoulderW - 8}
-            cy={130}
-            rx={goalProps.armW / 2}
+            cx={centerX + 2}
+            cy={47}
+            rx={16}
             ry={20}
             fill="none"
-            stroke={Colors.dark.accent}
-            strokeWidth="2"
+            stroke="rgba(0,0,0,0.1)"
+            strokeWidth="0.8"
             strokeDasharray="3,3"
           />
-          <Ellipse
-            cx={centerX + goalProps.shoulderW + 8}
-            cy={130}
-            rx={goalProps.armW / 2}
-            ry={20}
+      
+          {/* Hair - more realistic styling */}
+          {viewMode === 'front' ? (
+            <>
+              {/* Main hair shape */}
+              <Path
+                d={`M ${centerX - 18} 26 Q ${centerX - 22} 20 ${centerX - 15} 15 Q ${centerX} 12 ${centerX + 15} 15 Q ${centerX + 22} 20 ${centerX + 18} 26 Q ${centerX + 20} 35 ${centerX + 12} 32 Q ${centerX} 20 ${centerX - 12} 32 Q ${centerX - 20} 35 ${centerX - 18} 26`}
+                fill="none"
+                stroke={Colors.dark.accent}
+                strokeWidth="2"
+                strokeDasharray="3,3"
+              />
+              {/* Hair texture lines */}
+              <Path d={`M ${centerX - 12} 22 Q ${centerX - 8} 18 ${centerX - 4} 22`} stroke="rgba(0,0,0,0.2)" strokeWidth="0.8" fill="none" strokeDasharray="3,3" />
+              <Path d={`M ${centerX + 4} 22 Q ${centerX + 8} 18 ${centerX + 12} 22`} stroke="rgba(0,0,0,0.2)" strokeWidth="0.8" fill="none" strokeDasharray="3,3" />
+            </>
+          ) : (
+            <>
+              {/* Back hair shape */}
+              <Ellipse
+                cx={centerX}
+                cy={28}
+                rx={20}
+                ry={16}
+                fill="none"
+                stroke={Colors.dark.accent}
+                strokeWidth="2"
+                strokeDasharray="3,3"
+              />
+              {/* Hair whorl/crown */}
+              <Circle cx={centerX} cy={28} r={3} fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="1" strokeDasharray="3,3" />
+            </>
+          )}
+          
+          {/* Enhanced female hair for front view */}
+          {isFemale && viewMode === 'front' && (
+            <>
+              <Path
+                d={`M ${centerX - 16} 30 Q ${centerX - 24} 42 ${centerX - 18} 58 Q ${centerX - 12} 62 ${centerX - 8} 58 Q ${centerX - 6} 52 ${centerX - 8} 48`}
+                fill="none"
+                stroke={Colors.dark.accent}
+                strokeWidth="1"
+                opacity={0.85}
+                strokeDasharray="3,3"
+              />
+              <Path
+                d={`M ${centerX + 16} 30 Q ${centerX + 24} 42 ${centerX + 18} 58 Q ${centerX + 12} 62 ${centerX + 8} 58 Q ${centerX + 6} 52 ${centerX + 8} 48`}
+                fill="none"
+                stroke={Colors.dark.accent}
+                strokeWidth="1"
+                opacity={0.85}
+                strokeDasharray="3,3"
+              />
+            </>
+          )}
+      
+          {/* Neck - more anatomical */}
+          <Path
+            d={`M ${centerX - 5} 67 Q ${centerX} 65 ${centerX + 5} 67 L ${centerX + 6} 78 Q ${centerX} 80 ${centerX - 6} 78 Z`}
             fill="none"
             stroke={Colors.dark.accent}
             strokeWidth="2"
             strokeDasharray="3,3"
           />
           
-          {/* Legs */}
-          <Ellipse
-            cx={centerX - 12}
-            cy={210}
-            rx={goalProps.legW / 2}
-            ry={30}
+          {/* Neck shadow */}
+          <Line x1={centerX - 3} y1={72} x2={centerX + 3} y2={72} stroke="rgba(0,0,0,0.08)" strokeWidth="1" strokeDasharray="3,3" />
+      
+          {/* Shoulders - more realistic trapezius shape */}
+          <Path
+            d={`M ${centerX - goalProps.shoulderW} 78 Q ${centerX - goalProps.shoulderW - 5} 85 ${centerX - goalProps.shoulderW + 5} 92 L ${centerX + goalProps.shoulderW - 5} 92 Q ${centerX + goalProps.shoulderW + 5} 85 ${centerX + goalProps.shoulderW} 78 Q ${centerX} 75 ${centerX - goalProps.shoulderW} 78`}
             fill="none"
             stroke={Colors.dark.accent}
             strokeWidth="2"
             strokeDasharray="3,3"
           />
-          <Ellipse
-            cx={centerX + 12}
-            cy={210}
-            rx={goalProps.legW / 2}
-            ry={30}
+          
+          {/* Shoulder muscle definition */}
+          <Path d={`M ${centerX - goalProps.shoulderW + 8} 85 Q ${centerX - 15} 82 ${centerX - 8} 85`} stroke="rgba(0,0,0,0.1)" strokeWidth="1" fill="none" strokeDasharray="3,3" />
+          <Path d={`M ${centerX + 8} 85 Q ${centerX + 15} 82 ${centerX + goalProps.shoulderW - 8} 85`} stroke="rgba(0,0,0,0.1)" strokeWidth="1" fill="none" strokeDasharray="3,3" />
+      
+          {/* Chest/torso - more anatomical ribcage shape */}
+          <Path
+            d={`M ${centerX - goalProps.chestW} 95 Q ${centerX - goalProps.chestW - 2} 110 ${centerX - goalProps.chestW + 3} 135 Q ${centerX} 138 ${centerX + goalProps.chestW - 3} 135 Q ${centerX + goalProps.chestW + 2} 110 ${centerX + goalProps.chestW} 95 Q ${centerX} 92 ${centerX - goalProps.chestW} 95`}
             fill="none"
             stroke={Colors.dark.accent}
             strokeWidth="2"
             strokeDasharray="3,3"
           />
+      
+          {/* Waist - more realistic torso taper */}
+          <Path
+            d={`M ${centerX - goalProps.waistW} 140 Q ${centerX - goalProps.waistW - 2} 160 ${centerX - goalProps.waistW + 2} 180 Q ${centerX} 182 ${centerX + goalProps.waistW - 2} 180 Q ${centerX + goalProps.waistW + 2} 160 ${centerX + goalProps.waistW} 140 Q ${centerX} 138 ${centerX - goalProps.waistW} 140`}
+            fill="none"
+            stroke={Colors.dark.accent}
+            strokeWidth="2"
+            strokeDasharray="3,3"
+          />
+          
+          {/* Enhanced female hips with better curves */}
+          {isFemale && (
+            <Path
+              d={`M ${centerX - goalProps.waistW - 8} 175 Q ${centerX - goalProps.waistW - 12} 185 ${centerX - goalProps.waistW - 6} 195 Q ${centerX} 198 ${centerX + goalProps.waistW + 6} 195 Q ${centerX + goalProps.waistW + 12} 185 ${centerX + goalProps.waistW + 8} 175 Q ${centerX} 172 ${centerX - goalProps.waistW - 8} 175`}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+          )}
+      
+          {/* Arms - more realistic upper arm and forearm structure */}
+          <G>
+            {/* Left arm - upper arm */}
+            <Path
+              d={`M ${centerX - goalProps.shoulderW - 5} 95 Q ${centerX - goalProps.shoulderW - 12 - goalProps.armW} 100 ${centerX - goalProps.shoulderW - 10 - goalProps.armW} 130 Q ${centerX - goalProps.shoulderW - 6 - goalProps.armW} 132 ${centerX - goalProps.shoulderW - 2 - goalProps.armW} 130 Q ${centerX - goalProps.shoulderW - goalProps.armW} 100 ${centerX - goalProps.shoulderW - 5} 95`}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+            
+            {/* Left forearm */}
+            <Path
+              d={`M ${centerX - goalProps.shoulderW - 8 - goalProps.armW/2} 132 Q ${centerX - goalProps.shoulderW - 10 - goalProps.armW/2} 135 ${centerX - goalProps.shoulderW - 9 - goalProps.armW/2} 165 Q ${centerX - goalProps.shoulderW - 5 - goalProps.armW/2} 167 ${centerX - goalProps.shoulderW - 3 - goalProps.armW/2} 165 Q ${centerX - goalProps.shoulderW - 4 - goalProps.armW/2} 135 ${centerX - goalProps.shoulderW - 8 - goalProps.armW/2} 132`}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+            
+            {/* Left hand */}
+            <Ellipse
+              cx={centerX - goalProps.shoulderW - 6 - goalProps.armW/2}
+              cy={172}
+              rx={5}
+              ry={8}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+            
+            {/* Right arm - upper arm */}
+            <Path
+              d={`M ${centerX + goalProps.shoulderW + 5} 95 Q ${centerX + goalProps.shoulderW + 12 + goalProps.armW} 100 ${centerX + goalProps.shoulderW + 10 + goalProps.armW} 130 Q ${centerX + goalProps.shoulderW + 6 + goalProps.armW} 132 ${centerX + goalProps.shoulderW + 2 + goalProps.armW} 130 Q ${centerX + goalProps.shoulderW + goalProps.armW} 100 ${centerX + goalProps.shoulderW + 5} 95`}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+            
+            {/* Right forearm */}
+            <Path
+              d={`M ${centerX + goalProps.shoulderW + 8 + goalProps.armW/2} 132 Q ${centerX + goalProps.shoulderW + 10 + goalProps.armW/2} 135 ${centerX + goalProps.shoulderW + 9 + goalProps.armW/2} 165 Q ${centerX + goalProps.shoulderW + 5 + goalProps.armW/2} 167 ${centerX + goalProps.shoulderW + 3 + goalProps.armW/2} 165 Q ${centerX + goalProps.shoulderW + 4 + goalProps.armW/2} 135 ${centerX + goalProps.shoulderW + 8 + goalProps.armW/2} 132`}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+            
+            {/* Right hand */}
+            <Ellipse
+              cx={centerX + goalProps.shoulderW + 6 + goalProps.armW/2}
+              cy={172}
+              rx={5}
+              ry={8}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+          </G>
+      
+          {/* Legs - more realistic thigh and calf structure */}
+          <G>
+            {/* Left thigh */}
+            <Path
+              d={`M ${centerX - 15} 185 Q ${centerX - 18 - goalProps.legW} 190 ${centerX - 16 - goalProps.legW} 240 Q ${centerX - 12 - goalProps.legW} 242 ${centerX - 8 - goalProps.legW} 240 Q ${centerX - 10 - goalProps.legW} 190 ${centerX - 15} 185`}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+            
+            {/* Left calf */}
+            <Path
+              d={`M ${centerX - 14 - goalProps.legW/2} 242 Q ${centerX - 16 - goalProps.legW/2} 245 ${centerX - 14 - goalProps.legW/2} 295 Q ${centerX - 10 - goalProps.legW/2} 297 ${centerX - 6 - goalProps.legW/2} 295 Q ${centerX - 8 - goalProps.legW/2} 245 ${centerX - 14 - goalProps.legW/2} 242`}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+            
+            {/* Left foot */}
+            <Ellipse
+              cx={centerX - 10 - goalProps.legW/2}
+              cy={302}
+              rx={12}
+              ry={6}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+            
+            {/* Right thigh */}
+            <Path
+              d={`M ${centerX + 15} 185 Q ${centerX + 18 + goalProps.legW} 190 ${centerX + 16 + goalProps.legW} 240 Q ${centerX + 12 + goalProps.legW} 242 ${centerX + 8 + goalProps.legW} 240 Q ${centerX + 10 + goalProps.legW} 190 ${centerX + 15} 185`}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+            
+            {/* Right calf */}
+            <Path
+              d={`M ${centerX + 14 + goalProps.legW/2} 242 Q ${centerX + 16 + goalProps.legW/2} 245 ${centerX + 14 + goalProps.legW/2} 295 Q ${centerX + 10 + goalProps.legW/2} 297 ${centerX + 6 + goalProps.legW/2} 295 Q ${centerX + 8 + goalProps.legW/2} 245 ${centerX + 14 + goalProps.legW/2} 242`}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+            
+            {/* Right foot */}
+            <Ellipse
+              cx={centerX + 10 + goalProps.legW/2}
+              cy={302}
+              rx={12}
+              ry={6}
+              fill="none"
+              stroke={Colors.dark.accent}
+              strokeWidth="2"
+              strokeDasharray="3,3"
+            />
+          </G>
         </G>
         
         {/* Labels */}
@@ -755,68 +949,108 @@ export default function Human2DModel({
         
         {/* After workout body - with enhanced/improved proportions */}
         <G transform={`translate(${afterCenterX - centerX}, 0)`}>
-          {/* Head */}
+          {/* Head - more realistic proportions */}
           <Ellipse
             cx={centerX}
             cy={45}
-            rx={20}
-            ry={24}
+            rx={18}
+            ry={22}
             fill="url(#progressGradient)"
             stroke={Colors.dark.accent}
-            strokeWidth="2"
+            strokeWidth="1.2"
           />
           
-          {/* Hair */}
+          {/* Head shadow/depth */}
+          <Ellipse
+            cx={centerX + 2}
+            cy={47}
+            rx={16}
+            ry={20}
+            fill="none"
+            stroke="rgba(0,0,0,0.1)"
+            strokeWidth="0.8"
+          />
+      
+          {/* Hair - more realistic styling */}
           {viewMode === 'front' ? (
-            <Path
-              d={`M ${centerX - 20} 28 Q ${centerX} 18 ${centerX + 20} 28 Q ${centerX + 18} 35 ${centerX + 10} 30 Q ${centerX} 22 ${centerX - 10} 30 Q ${centerX - 18} 35 ${centerX - 20} 28`}
-              fill="url(#hairGradient)"
-              stroke={Colors.dark.accent}
-              strokeWidth="1.5"
-            />
+            <>
+              {/* Main hair shape */}
+              <Path
+                d={`M ${centerX - 18} 26 Q ${centerX - 22} 20 ${centerX - 15} 15 Q ${centerX} 12 ${centerX + 15} 15 Q ${centerX + 22} 20 ${centerX + 18} 26 Q ${centerX + 20} 35 ${centerX + 12} 32 Q ${centerX} 20 ${centerX - 12} 32 Q ${centerX - 20} 35 ${centerX - 18} 26`}
+                fill="url(#hairGradient)"
+                stroke={isFemale ? '#8B4513' : '#654321'}
+                strokeWidth="1.2"
+              />
+              {/* Hair texture lines */}
+              <Path d={`M ${centerX - 12} 22 Q ${centerX - 8} 18 ${centerX - 4} 22`} stroke="rgba(0,0,0,0.2)" strokeWidth="0.8" fill="none" />
+              <Path d={`M ${centerX + 4} 22 Q ${centerX + 8} 18 ${centerX + 12} 22`} stroke="rgba(0,0,0,0.2)" strokeWidth="0.8" fill="none" />
+            </>
           ) : (
-            <Ellipse
-              cx={centerX}
-              cy={30}
-              rx={22}
-              ry={18}
-              fill="url(#hairGradient)"
-              stroke={Colors.dark.accent}
-              strokeWidth="1.5"
-            />
+            <>
+              {/* Back hair shape */}
+              <Ellipse
+                cx={centerX}
+                cy={28}
+                rx={20}
+                ry={16}
+                fill="url(#hairGradient)"
+                stroke={isFemale ? '#8B4513' : '#654321'}
+                strokeWidth="1.2"
+              />
+              {/* Hair whorl/crown */}
+              <Circle cx={centerX} cy={28} r={3} fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="1" />
+            </>
           )}
           
-          {/* Neck */}
-          <Ellipse
-            cx={centerX}
-            cy={73}
-            rx={6}
-            ry={10}
+          {/* Enhanced female hair for front view */}
+          {isFemale && viewMode === 'front' && (
+            <>
+              <Path
+                d={`M ${centerX - 16} 30 Q ${centerX - 24} 42 ${centerX - 18} 58 Q ${centerX - 12} 62 ${centerX - 8} 58 Q ${centerX - 6} 52 ${centerX - 8} 48`}
+                fill="url(#hairGradient)"
+                stroke="#8B4513"
+                strokeWidth="1"
+                opacity={0.85}
+              />
+              <Path
+                d={`M ${centerX + 16} 30 Q ${centerX + 24} 42 ${centerX + 18} 58 Q ${centerX + 12} 62 ${centerX + 8} 58 Q ${centerX + 6} 52 ${centerX + 8} 48`}
+                fill="url(#hairGradient)"
+                stroke="#8B4513"
+                strokeWidth="1"
+                opacity={0.85}
+              />
+            </>
+          )}
+      
+          {/* Neck - more anatomical */}
+          <Path
+            d={`M ${centerX - 5} 67 Q ${centerX} 65 ${centerX + 5} 67 L ${centerX + 6} 78 Q ${centerX} 80 ${centerX - 6} 78 Z`}
             fill="url(#progressGradient)"
             stroke={Colors.dark.accent}
-            strokeWidth="1.5"
+            strokeWidth="1"
           />
           
-          {/* Shoulders - enhanced */}
-          <Ellipse
-            cx={centerX}
-            cy={85}
-            rx={progressProps.shoulderW}
-            ry={8}
+          {/* Neck shadow */}
+          <Line x1={centerX - 3} y1={72} x2={centerX + 3} y2={72} stroke="rgba(0,0,0,0.08)" strokeWidth="1" />
+      
+          {/* Shoulders - more realistic trapezius shape */}
+          <Path
+            d={`M ${centerX - progressProps.shoulderW} 78 Q ${centerX - progressProps.shoulderW - 5} 85 ${centerX - progressProps.shoulderW + 5} 92 L ${centerX + progressProps.shoulderW - 5} 92 Q ${centerX + progressProps.shoulderW + 5} 85 ${centerX + progressProps.shoulderW} 78 Q ${centerX} 75 ${centerX - progressProps.shoulderW} 78`}
             fill="url(#progressGradient)"
             stroke={Colors.dark.accent}
-            strokeWidth="2"
+            strokeWidth="1.2"
           />
           
-          {/* Chest - enhanced */}
-          <Ellipse
-            cx={centerX}
-            cy={110}
-            rx={progressProps.chestW}
-            ry={28}
+          {/* Shoulder muscle definition */}
+          <Path d={`M ${centerX - progressProps.shoulderW + 8} 85 Q ${centerX - 15} 82 ${centerX - 8} 85`} stroke="rgba(0,0,0,0.1)" strokeWidth="1" fill="none" />
+          <Path d={`M ${centerX + 8} 85 Q ${centerX + 15} 82 ${centerX + progressProps.shoulderW - 8} 85`} stroke="rgba(0,0,0,0.1)" strokeWidth="1" fill="none" />
+      
+          {/* Chest/torso - more anatomical ribcage shape */}
+          <Path
+            d={`M ${centerX - progressProps.chestW} 95 Q ${centerX - progressProps.chestW - 2} 110 ${centerX - progressProps.chestW + 3} 135 Q ${centerX} 138 ${centerX + progressProps.chestW - 3} 135 Q ${centerX + progressProps.chestW + 2} 110 ${centerX + progressProps.chestW} 95 Q ${centerX} 92 ${centerX - progressProps.chestW} 95`}
             fill="url(#progressGradient)"
             stroke={Colors.dark.accent}
-            strokeWidth="2"
+            strokeWidth="1.2"
           />
           
           {/* Enhanced muscle definition for progress */}
@@ -828,57 +1062,138 @@ export default function Human2DModel({
               <Line x1={centerX - 12} y1={122} x2={centerX + 12} y2={122} stroke={Colors.dark.accent} strokeWidth="1.5" />
             </G>
           )}
-          
-          {/* Waist - improved */}
-          <Ellipse
-            cx={centerX}
-            cy={160}
-            rx={progressProps.waistW}
-            ry={22}
+      
+          {/* Waist - more realistic torso taper */}
+          <Path
+            d={`M ${centerX - progressProps.waistW} 140 Q ${centerX - progressProps.waistW - 2} 160 ${centerX - progressProps.waistW + 2} 180 Q ${centerX} 182 ${centerX + progressProps.waistW - 2} 180 Q ${centerX + progressProps.waistW + 2} 160 ${centerX + progressProps.waistW} 140 Q ${centerX} 138 ${centerX - progressProps.waistW} 140`}
             fill="url(#progressGradient)"
             stroke={Colors.dark.accent}
-            strokeWidth="2"
+            strokeWidth="1.2"
           />
           
-          {/* Arms - enhanced */}
-          <Ellipse
-            cx={centerX - progressProps.shoulderW - 8}
-            cy={130}
-            rx={progressProps.armW / 2}
-            ry={20}
-            fill="url(#progressGradient)"
-            stroke={Colors.dark.accent}
-            strokeWidth="2"
-          />
-          <Ellipse
-            cx={centerX + progressProps.shoulderW + 8}
-            cy={130}
-            rx={progressProps.armW / 2}
-            ry={20}
-            fill="url(#progressGradient)"
-            stroke={Colors.dark.accent}
-            strokeWidth="2"
-          />
-          
-          {/* Legs - enhanced */}
-          <Ellipse
-            cx={centerX - 12}
-            cy={210}
-            rx={progressProps.legW / 2}
-            ry={30}
-            fill="url(#progressGradient)"
-            stroke={Colors.dark.accent}
-            strokeWidth="2"
-          />
-          <Ellipse
-            cx={centerX + 12}
-            cy={210}
-            rx={progressProps.legW / 2}
-            ry={30}
-            fill="url(#progressGradient)"
-            stroke={Colors.dark.accent}
-            strokeWidth="2"
-          />
+          {/* Enhanced female hips with better curves */}
+          {isFemale && (
+            <Path
+              d={`M ${centerX - progressProps.waistW - 8} 175 Q ${centerX - progressProps.waistW - 12} 185 ${centerX - progressProps.waistW - 6} 195 Q ${centerX} 198 ${centerX + progressProps.waistW + 6} 195 Q ${centerX + progressProps.waistW + 12} 185 ${centerX + progressProps.waistW + 8} 175 Q ${centerX} 172 ${centerX - progressProps.waistW - 8} 175`}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1.2"
+            />
+          )}
+      
+          {/* Arms - more realistic upper arm and forearm structure */}
+          <G>
+            {/* Left arm - upper arm */}
+            <Path
+              d={`M ${centerX - progressProps.shoulderW - 5} 95 Q ${centerX - progressProps.shoulderW - 12 - progressProps.armW} 100 ${centerX - progressProps.shoulderW - 10 - progressProps.armW} 130 Q ${centerX - progressProps.shoulderW - 6 - progressProps.armW} 132 ${centerX - progressProps.shoulderW - 2 - progressProps.armW} 130 Q ${centerX - progressProps.shoulderW - progressProps.armW} 100 ${centerX - progressProps.shoulderW - 5} 95`}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1.2"
+            />
+            
+            {/* Left forearm */}
+            <Path
+              d={`M ${centerX - progressProps.shoulderW - 8 - progressProps.armW/2} 132 Q ${centerX - progressProps.shoulderW - 10 - progressProps.armW/2} 135 ${centerX - progressProps.shoulderW - 9 - progressProps.armW/2} 165 Q ${centerX - progressProps.shoulderW - 5 - progressProps.armW/2} 167 ${centerX - progressProps.shoulderW - 3 - progressProps.armW/2} 165 Q ${centerX - progressProps.shoulderW - 4 - progressProps.armW/2} 135 ${centerX - progressProps.shoulderW - 8 - progressProps.armW/2} 132`}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1.2"
+            />
+            
+            {/* Left hand */}
+            <Ellipse
+              cx={centerX - progressProps.shoulderW - 6 - progressProps.armW/2}
+              cy={172}
+              rx={5}
+              ry={8}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1"
+            />
+            
+            {/* Right arm - upper arm */}
+            <Path
+              d={`M ${centerX + progressProps.shoulderW + 5} 95 Q ${centerX + progressProps.shoulderW + 12 + progressProps.armW} 100 ${centerX + progressProps.shoulderW + 10 + progressProps.armW} 130 Q ${centerX + progressProps.shoulderW + 6 + progressProps.armW} 132 ${centerX + progressProps.shoulderW + 2 + progressProps.armW} 130 Q ${centerX + progressProps.shoulderW + progressProps.armW} 100 ${centerX + progressProps.shoulderW + 5} 95`}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1.2"
+            />
+            
+            {/* Right forearm */}
+            <Path
+              d={`M ${centerX + progressProps.shoulderW + 8 + progressProps.armW/2} 132 Q ${centerX + progressProps.shoulderW + 10 + progressProps.armW/2} 135 ${centerX + progressProps.shoulderW + 9 + progressProps.armW/2} 165 Q ${centerX + progressProps.shoulderW + 5 + progressProps.armW/2} 167 ${centerX + progressProps.shoulderW + 3 + progressProps.armW/2} 165 Q ${centerX + progressProps.shoulderW + 4 + progressProps.armW/2} 135 ${centerX + progressProps.shoulderW + 8 + progressProps.armW/2} 132`}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1.2"
+            />
+            
+            {/* Right hand */}
+            <Ellipse
+              cx={centerX + progressProps.shoulderW + 6 + progressProps.armW/2}
+              cy={172}
+              rx={5}
+              ry={8}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1"
+            />
+          </G>
+      
+          {/* Legs - more realistic thigh and calf structure */}
+          <G>
+            {/* Left thigh */}
+            <Path
+              d={`M ${centerX - 15} 185 Q ${centerX - 18 - progressProps.legW} 190 ${centerX - 16 - progressProps.legW} 240 Q ${centerX - 12 - progressProps.legW} 242 ${centerX - 8 - progressProps.legW} 240 Q ${centerX - 10 - progressProps.legW} 190 ${centerX - 15} 185`}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1.2"
+            />
+            
+            {/* Left calf */}
+            <Path
+              d={`M ${centerX - 14 - progressProps.legW/2} 242 Q ${centerX - 16 - progressProps.legW/2} 245 ${centerX - 14 - progressProps.legW/2} 295 Q ${centerX - 10 - progressProps.legW/2} 297 ${centerX - 6 - progressProps.legW/2} 295 Q ${centerX - 8 - progressProps.legW/2} 245 ${centerX - 14 - progressProps.legW/2} 242`}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1.2"
+            />
+            
+            {/* Left foot */}
+            <Ellipse
+              cx={centerX - 10 - progressProps.legW/2}
+              cy={302}
+              rx={12}
+              ry={6}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1"
+            />
+            
+            {/* Right thigh */}
+            <Path
+              d={`M ${centerX + 15} 185 Q ${centerX + 18 + progressProps.legW} 190 ${centerX + 16 + progressProps.legW} 240 Q ${centerX + 12 + progressProps.legW} 242 ${centerX + 8 + progressProps.legW} 240 Q ${centerX + 10 + progressProps.legW} 190 ${centerX + 15} 185`}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1.2"
+            />
+            
+            {/* Right calf */}
+            <Path
+              d={`M ${centerX + 14 + progressProps.legW/2} 242 Q ${centerX + 16 + progressProps.legW/2} 245 ${centerX + 14 + progressProps.legW/2} 295 Q ${centerX + 10 + progressProps.legW/2} 297 ${centerX + 6 + progressProps.legW/2} 295 Q ${centerX + 8 + progressProps.legW/2} 245 ${centerX + 14 + progressProps.legW/2} 242`}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1.2"
+            />
+            
+            {/* Right foot */}
+            <Ellipse
+              cx={centerX + 10 + progressProps.legW/2}
+              cy={302}
+              rx={12}
+              ry={6}
+              fill="url(#progressGradient)"
+              stroke={Colors.dark.accent}
+              strokeWidth="1"
+            />
+          </G>
           
           {/* Progress glow effect */}
           <Circle
@@ -911,8 +1226,23 @@ export default function Human2DModel({
     return anchorPoints.map((anchor) => {
       const isActive = selectedAnchor === anchor.name;
       
+      const panResponder = PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          setSelectedAnchor(anchor.name);
+          setSliderValue(anchor.value);
+        },
+        onPanResponderMove: (_, gestureState) => {
+          handleAnchorDrag(anchor.name, gestureState.dx);
+        },
+        onPanResponderRelease: () => {
+          // Keep selected for slider interaction
+        },
+      });
+      
       return (
-        <TouchableOpacity
+        <View
           key={anchor.name}
           style={[
             styles.anchorPoint,
@@ -924,12 +1254,11 @@ export default function Human2DModel({
               shadowColor: anchor.color,
             }
           ]}
-          onPress={() => handleAnchorPress(anchor.name)}
-          activeOpacity={0.8}
+          {...panResponder.panHandlers}
         >
           <Text style={styles.anchorLabel}>{anchor.name.charAt(0).toUpperCase()}</Text>
           {isActive && <View style={styles.anchorPulse} />}
-        </TouchableOpacity>
+        </View>
       );
     });
   };
@@ -1003,7 +1332,7 @@ export default function Human2DModel({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, style]}>
       <View style={styles.modelContainer}>
         {/* Header with view toggle */}
         <View style={styles.header}>
@@ -1020,7 +1349,7 @@ export default function Human2DModel({
         {/* Main SVG container */}
         <View style={styles.svgWrapper}>
           <TouchableOpacity onPress={toggleView} style={styles.svgContainer}>
-            <Svg width={(showComparison || showProgress) ? "360" : "260"} height="320" viewBox={(showComparison || showProgress) ? "0 0 360 320" : "0 0 260 320"}>
+            <Svg width="320" height="400" viewBox="0 0 320 400">
               <Defs>
                 <LinearGradient id="skinGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                   <Stop offset="0%" stopColor={isFemale ? '#FFF0F0' : '#F0F8FF'} />
@@ -1082,13 +1411,15 @@ export default function Human2DModel({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    height: 500,
+    height: 400, // Larger, visually prominent
     borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#0F1419',
     position: 'relative',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modelContainer: {
     flex: 1,

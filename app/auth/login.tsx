@@ -95,12 +95,19 @@ export default function LoginScreen() {
           {error && <Text style={styles.errorText}>{error}</Text>}
           
           <Button
-            title="Sign In"
+            title="Login"
             onPress={handleLogin}
             variant="primary"
-            size="large"
-            style={styles.button}
+            size="xlarge"
+            style={[styles.button, {minHeight: 64}]}
             isLoading={isLoading}
+          />
+          <Button
+            title="Create your account"
+            onPress={handleSignup}
+            variant="outline"
+            size="xlarge"
+            style={[styles.button, {minHeight: 64}]}
           />
         </View>
 

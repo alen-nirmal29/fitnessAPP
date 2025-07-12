@@ -110,8 +110,8 @@ export default function GoalsScreen() {
             title="Next"
             onPress={handleNext}
             variant="primary"
-            size="large"
-            style={styles.button}
+            size="xlarge"
+            style={[styles.button, {minHeight: 64}]}
             disabled={!selectedGoal}
             isLoading={isLoading}
           />

@@ -357,8 +357,8 @@ export default function BodyCompositionScreen() {
             title="Next"
             onPress={handleNext}
             variant="primary"
-            size="large"
-            style={styles.button}
+            size="xlarge"
+            style={[styles.button, {minHeight: 64}]}
             isLoading={isLoading}
             disabled={isLoading}
           />

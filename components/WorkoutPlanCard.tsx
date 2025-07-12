@@ -82,7 +82,10 @@ export default function WorkoutPlanCard({
           <View style={styles.infoItem}>
             <Clock size={16} color={Colors.dark.subtext} />
             <Text style={styles.infoText}>
-              {plan.schedule.length} {plan.schedule.length === 1 ? 'Day' : 'Days'}
+              {plan.schedule && plan.schedule.length > 0 
+                ? `${plan.schedule.length} ${plan.schedule.length === 1 ? 'Day' : 'Days'}`
+                : '7 Days'
+              }
             </Text>
           </View>
           

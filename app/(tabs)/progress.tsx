@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { TrendingUp, Calendar, Scale, Ruler } from 'lucide-react-native';
 import { SpecificGoal } from '@/types/user';
@@ -16,14 +16,69 @@ export default function ProgressScreen() {
   const { currentPlan, workoutProgress, progressMeasurements, generateProgressMeasurements } = useWorkoutStore();
 
   // Mock goal measurements for demonstration
-  const goalMeasurements = {
-    chest: 55,
-    waist: 45,
-    hips: 50,
-    arms: 55,
-    legs: 55,
-    shoulders: 55,
-  };
+  const goalMeasurements = useMemo(() => {
+    const currentMeasurements = user?.currentMeasurements;
+    if (!currentMeasurements) {
+      return {
+        chest: 55,
+        waist: 45,
+        hips: 50,
+        arms: 55,
+        legs: 55,
+        shoulders: 55,
+      };
+    }
+    
+    // Calculate realistic goal measurements based on current measurements and user's goal
+    const specificGoal = user?.specificGoal;
+    let goalMeasurements = { ...currentMeasurements };
+    
+    switch (specificGoal) {
+      case 'build_muscle':
+        goalMeasurements = {
+          shoulders: currentMeasurements.shoulders + 15,
+          chest: currentMeasurements.chest + 20,
+          arms: currentMeasurements.arms + 25,
+          waist: currentMeasurements.waist + 5,
+          legs: currentMeasurements.legs + 18,
+        };
+        break;
+      case 'weight_loss':
+        goalMeasurements = {
+          shoulders: currentMeasurements.shoulders - 5,
+          chest: currentMeasurements.chest - 8,
+          arms: currentMeasurements.arms - 3,
+          waist: currentMeasurements.waist - 20,
+          legs: currentMeasurements.legs - 10,
+        };
+        break;
+      case 'increase_strength':
+        goalMeasurements = {
+          shoulders: currentMeasurements.shoulders + 12,
+          chest: currentMeasurements.chest + 15,
+          arms: currentMeasurements.arms + 20,
+          waist: currentMeasurements.waist + 3,
+          legs: currentMeasurements.legs + 15,
+        };
+        break;
+      default:
+        // General fitness improvement
+        goalMeasurements = {
+          shoulders: currentMeasurements.shoulders + 8,
+          chest: currentMeasurements.chest + 10,
+          arms: currentMeasurements.arms + 12,
+          waist: currentMeasurements.waist - 5,
+          legs: currentMeasurements.legs + 10,
+        };
+    }
+    
+    // Ensure measurements stay within reasonable bounds (20-100)
+    Object.keys(goalMeasurements).forEach(key => {
+      goalMeasurements[key] = Math.max(20, Math.min(100, goalMeasurements[key]));
+    });
+    
+    return goalMeasurements;
+  }, [user?.currentMeasurements, user?.specificGoal]);
 
   // Calculate real progress based on completed workouts
   const getWeightProgress = () => {
@@ -78,7 +133,7 @@ export default function ProgressScreen() {
   
   // Generate progress measurements if we have a current plan and progress
   React.useEffect(() => {
-    if (currentPlan && planProgress > 0 && user?.currentMeasurements && !progressMeasurements) {
+    if (currentPlan && planProgress > 0 && user?.currentMeasurements) {
       const currentMeasurements = {
         shoulders: user.currentMeasurements.shoulders,
         chest: user.currentMeasurements.chest,
@@ -86,7 +141,11 @@ export default function ProgressScreen() {
         waist: user.currentMeasurements.waist,
         legs: user.currentMeasurements.legs,
       };
-      generateProgressMeasurements(currentMeasurements, currentPlan.specificGoal as SpecificGoal, planProgress);
+      
+      // Only generate if we don't have progress measurements or if progress has changed
+      if (!progressMeasurements || Object.keys(progressMeasurements).length === 0) {
+        generateProgressMeasurements(currentMeasurements, currentPlan.specificGoal as SpecificGoal, planProgress);
+      }
     }
   }, [currentPlan, planProgress, user?.currentMeasurements, progressMeasurements, generateProgressMeasurements]);
   
@@ -154,13 +213,22 @@ export default function ProgressScreen() {
               See how your body has transformed after completing {Math.round(planProgress)}% of your workout plan
             </Text>
           </View>
-          
-          <Human2DModel 
-            user={user}
-            progressMeasurements={progressMeasurements}
-            showProgress={true}
-            interactive={false}
-          />
+          <View style={styles.verticalModels}>
+            <Text style={styles.modelLabel}>Current</Text>
+            <Human2DModel 
+              user={user}
+              interactive={false}
+              style={styles.modelNormal}
+            />
+            <Text style={styles.modelLabel}>After</Text>
+            <Human2DModel 
+              user={user}
+              progressMeasurements={progressMeasurements}
+              showProgress={true}
+              interactive={false}
+              style={styles.modelNormal}
+            />
+          </View>
         </View>
       ) : (
         <View style={styles.modelContainer}>
@@ -170,13 +238,21 @@ export default function ProgressScreen() {
               Compare your current body model with your goal
             </Text>
           </View>
-          
-          <Human2DModel 
-            user={user}
-            goalMeasurements={goalMeasurements}
-            showComparison={true}
-            interactive={false}
-          />
+          <View style={styles.verticalModels}>
+            <Text style={styles.modelLabel}>Current</Text>
+            <Human2DModel 
+              user={user}
+              interactive={false}
+              style={styles.modelNormal}
+            />
+            <Text style={styles.modelLabel}>Goal</Text>
+            <Human2DModel 
+              user={user}
+              goalMeasurements={goalMeasurements}
+              interactive={false}
+              style={styles.modelNormal}
+            />
+          </View>
         </View>
       )}
 
@@ -377,6 +453,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.dark.subtext,
   },
+  modelWrapper: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  compactModel: {
+    width: '100%',
+    height: 200, // Adjust height as needed
+  },
   measurementsCard: {
     marginBottom: 24,
   },
@@ -482,5 +566,26 @@ const styles = StyleSheet.create({
   recentWorkoutStats: {
     fontSize: 14,
     color: Colors.dark.subtext,
+  },
+  verticalModels: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 16,
+    width: '100%',
+  },
+  modelNormal: {
+    width: 320,
+    height: 400,
+    marginVertical: 12,
+    alignSelf: 'center',
+  },
+  modelLabel: {
+    fontSize: 16,
+    color: Colors.dark.text,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+    alignSelf: 'center',
   },
 });

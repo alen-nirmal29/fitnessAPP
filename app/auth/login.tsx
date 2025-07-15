@@ -7,6 +7,7 @@ import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import { useAuthStore } from '@/store/auth-store';
+import BackButton from '@/components/BackButton';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -63,9 +64,7 @@ export default function LoginScreen() {
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <ArrowLeft size={24} color={Colors.dark.text} />
-          </TouchableOpacity>
+          <BackButton onPress={handleBack} style={styles.backButton} />
           <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>Sign in to continue your fitness journey</Text>
         </View>

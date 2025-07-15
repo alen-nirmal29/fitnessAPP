@@ -8,6 +8,7 @@ import Card from '@/components/Card';
 import Input from '@/components/Input';
 import { useAuthStore } from '@/store/auth-store';
 import { useWorkoutStore } from '@/store/workout-store';
+import BackButton from '@/components/BackButton';
 
 export default function PlanGeneratorScreen() {
   const { user } = useAuthStore();
@@ -130,11 +131,8 @@ export default function PlanGeneratorScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <Button
-            title="Back"
+          <BackButton
             onPress={handleBack}
-            variant="outline"
-            size="large"
             style={styles.backButton}
           />
           <Button

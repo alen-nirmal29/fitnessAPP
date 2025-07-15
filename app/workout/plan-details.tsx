@@ -8,6 +8,7 @@ import Card from '@/components/Card';
 import Human2DModel from '@/components/Human2DModel';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useAuthStore } from '@/store/auth-store';
+import BackButton from '@/components/BackButton';
 
 export default function PlanDetailsScreen() {
   const { currentPlan } = useWorkoutStore();
@@ -180,11 +181,8 @@ export default function PlanDetailsScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button
-          title="Back"
+        <BackButton
           onPress={handleBack}
-          variant="outline"
-          size="large"
           style={styles.button}
         />
         <Button

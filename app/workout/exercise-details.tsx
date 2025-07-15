@@ -5,6 +5,7 @@ import { ArrowLeft, Play, Info, Target, Clock, Dumbbell } from 'lucide-react-nat
 import Colors from '@/constants/colors';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
+import BackButton from '@/components/BackButton';
 
 export default function ExerciseDetailsScreen() {
   const params = useLocalSearchParams();
@@ -91,9 +92,7 @@ export default function ExerciseDetailsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <ArrowLeft size={24} color={Colors.dark.text} />
-        </TouchableOpacity>
+        <BackButton onPress={handleBack} style={styles.backButton} />
         <Text style={styles.title}>{dayName}</Text>
       </View>
 

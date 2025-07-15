@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import Colors from '@/constants/colors';
@@ -7,6 +7,7 @@ import Button from '@/components/Button';
 import Human2DModel from '@/components/Human2DModel';
 import { useAuthStore } from '@/store/auth-store';
 import { BodyMeasurements } from '@/types/user';
+import BackButton from '@/components/BackButton';
 
 export default function BodyModelScreen() {
   const { updateProfile, user, setInOnboarding } = useAuthStore();
@@ -19,11 +20,25 @@ export default function BodyModelScreen() {
     shoulders: 50,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
   // Set onboarding flag when component mounts
   useEffect(() => {
     console.log('Body model screen mounted, setting onboarding flag');
     setInOnboarding(true);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      })
+    ]).start();
   }, []);
 
   const handleMeasurementsChange = useCallback((newMeasurements: Record<string, number>) => {
@@ -72,51 +87,45 @@ export default function BodyModelScreen() {
     <View style={styles.container}>
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Your Body Model</Text>
+        <Animated.View style={[styles.header, { opacity: fadeAnim }]}> 
+          <Text style={styles.title}>Visualize Your Progress</Text>
           <Text style={styles.subtitle}>
-            This realistic 2D model is generated based on your height, weight, and gender
+            Welcome to your personal body model! This is a safe space to see your unique shape and set inspiring goals. Adjust your measurements and watch your transformation come to life. Remember, every body is beautiful and every step counts!
           </Text>
-        </View>
+        </Animated.View>
 
-        <Human2DModel 
-          user={user}
-          goalMeasurements={user?.goalMeasurements}
-          showComparison={!!user?.goalMeasurements}
-          interactive={true}
-          onMeasurementChange={handleMeasurementsChange}
-        />
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }] }}>
+          <Human2DModel 
+            user={user}
+            goalMeasurements={user?.goalMeasurements}
+            showComparison={!!user?.goalMeasurements}
+            interactive={true}
+            onMeasurementChange={handleMeasurementsChange}
+          />
+        </Animated.View>
 
         <View style={styles.instructionsContainer}>
-          <Text style={styles.instructionsTitle}>Customize Your Body Model</Text>
+          <Text style={styles.instructionsTitle}>How to Use</Text>
           <Text style={styles.instructionsText}>
-            • Ultra-realistic 2D human model with anatomical accuracy
+            • Tap and drag the colored points to adjust your measurements
           </Text>
           <Text style={styles.instructionsText}>
-            • Drag horizontally to rotate the model 360 degrees
+            • Switch between front and back views by tapping the model
           </Text>
           <Text style={styles.instructionsText}>
-            • Tap colored anchor points to customize body measurements
+            • Compare your current and goal body shapes (if set)
           </Text>
           <Text style={styles.instructionsText}>
-            • Enhanced muscle definition and gender-specific features
+            • All changes are saved for your fitness journey
           </Text>
-          <Text style={styles.instructionsText}>
-            • Current vs Goal body comparison (when goals are set)
-          </Text>
-          <Text style={styles.instructionsText}>
-            • All measurements saved for progress tracking
-          </Text>
+          <Text style={[styles.instructionsText, { color: Colors.dark.accent, fontWeight: 'bold', marginTop: 8 }]}>You are stronger than you think. Let's get started!</Text>
         </View>
 
         <View style={styles.footer}>
-          <Button
-            title="Back"
+          <BackButton
             onPress={handleBack}
-            variant="outline"
-            size="large"
-            style={styles.button}
             disabled={isLoading}
+            style={styles.button}
           />
           <Button
             title="Next"

@@ -61,7 +61,7 @@ export default function PlanSelectionScreen() {
           onPress={handleCreateCustomPlan}
           variant="primary"
           size="large"
-          style={styles.customButton}
+          style={[styles.customButton, { minWidth: '100%', width: '100%' }]}
           leftIcon={<Plus size={20} color={Colors.dark.background} />}
         />
 
@@ -133,6 +133,8 @@ const styles = StyleSheet.create({
   },
   customButton: {
     marginBottom: 24,
+    minWidth: '100%',
+    width: '100%',
   },
   plansContainer: {
     marginBottom: 24,

@@ -8,6 +8,7 @@ import Button from '@/components/Button';
 import Input from '@/components/Input';
 import { useAuthStore } from '@/store/auth-store';
 import { Gender } from '@/types/user';
+import BackButton from '@/components/BackButton';
 
 export default function EditProfileScreen() {
   const { user, updateProfile } = useAuthStore();
@@ -96,9 +97,7 @@ export default function EditProfileScreen() {
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <ArrowLeft size={24} color={Colors.dark.text} />
-          </TouchableOpacity>
+          <BackButton onPress={handleBack} style={styles.backButton} />
           <Text style={styles.title}>Edit Profile</Text>
         </View>
 

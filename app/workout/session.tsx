@@ -360,7 +360,8 @@ export default function WorkoutSessionScreen() {
             title={currentSession.state === 'active' || currentSession.state === 'resting' ? 'Pause' : 'Resume'}
             onPress={handleStartPause}
             variant="outline"
-            style={styles.controlButton}
+            size="small"
+            style={[styles.controlButton, { maxWidth: 160, alignSelf: 'center' }]}
             leftIcon={
               currentSession.state === 'active' || currentSession.state === 'resting' ? 
               <Pause size={20} color={Colors.dark.accent} /> : 
@@ -372,8 +373,8 @@ export default function WorkoutSessionScreen() {
             title={currentSession.isRestTimer ? 'Skip Rest' : (currentSession.currentSet >= currentSession.totalSets ? 'Complete Exercise' : 'Next Set')}
             onPress={handleNextSet}
             variant="primary"
-            size="large"
-            style={styles.controlButton}
+            size="small"
+            style={[styles.controlButton, { maxWidth: 160, alignSelf: 'center' }]}
             leftIcon={<SkipForward size={20} color="#fff" />}
           />
         </View>
@@ -384,28 +385,30 @@ export default function WorkoutSessionScreen() {
             title="Complete Exercise"
             onPress={handleCompleteExercise}
             variant="outline"
-            size="large"
-            style={styles.actionButton}
+            size="small"
+            style={[styles.actionButton, { maxWidth: 160, alignSelf: 'center' }]}
           />
           
           <Button
             title="End Workout"
             onPress={handleEndWorkout}
             variant="outline"
-            size="large"
-            style={styles.actionButton}
+            size="small"
+            style={[styles.actionButton, { maxWidth: 160, alignSelf: 'center' }]}
           />
         </View>
       </ScrollView>
 
       {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
+      <View style={[styles.bottomActions, { padding: 8 }]}>
         <Button
           title="Cancel Workout"
           onPress={handleCancelWorkout}
           variant="text"
+          size="small"
           leftIcon={<Square size={16} color={Colors.dark.error} />}
           textStyle={{ color: Colors.dark.error }}
+          style={{ maxWidth: 160, alignSelf: 'center' }}
         />
       </View>
     </View>
@@ -615,7 +618,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 24,
+    padding: 8,
     backgroundColor: Colors.dark.background,
     borderTopWidth: 1,
     borderTopColor: Colors.ui.border,

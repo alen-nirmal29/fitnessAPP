@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Dimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Dumbbell, Award, TrendingUp, Calendar, Clock, Target, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -91,6 +91,11 @@ export default function HomeScreen() {
     legs: 55,
     shoulders: 55,
   };
+
+  // Get screen dimensions for modal model sizing
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  const modelWidth = Math.min(screenWidth * 0.9, 400);
+  const modelHeight = Math.min(screenHeight * 0.6, 400);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -240,16 +245,22 @@ export default function HomeScreen() {
         animationType="fade"
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowComparisonModal(false)}>
-            <X size={24} color={Colors.dark.text} />
-          </TouchableOpacity>
-          <Human2DModel 
-            user={user}
-            goalMeasurements={goalMeasurements}
-            showComparison={true}
-            interactive={false}
-            style={styles.fullModel}
-          />
+          <View style={styles.modalHeaderFixed}>
+            <TouchableOpacity style={styles.modalCloseButtonTop} onPress={() => setShowComparisonModal(false)}>
+              <X size={24} color={Colors.dark.text} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Front View</Text>
+          </View>
+          <ScrollView contentContainerStyle={styles.modalScrollContent} bounces={false}>
+            <View style={{ width: '95%', alignItems: 'flex-start', marginTop: 40, marginBottom: 16, alignSelf: 'center', height: 700, backgroundColor: '#181C22', borderRadius: 24, padding: 12, paddingTop: 180 }}>
+              <Human2DModel
+                goalMeasurements={goalMeasurements}
+                showComparison={true}
+                interactive={false}
+                style={{ width: 380, height: 440, marginLeft: 0 }}
+              />
+            </View>
+          </ScrollView>
         </View>
       </Modal>
     </ScrollView>
@@ -432,6 +443,10 @@ const styles = StyleSheet.create({
   },
   transformationCard: {
     marginBottom: 24,
+    minHeight: 600, // Increased height for more space
+    paddingVertical: 32, // More vertical padding
+    paddingHorizontal: 16, // Add horizontal padding for balance
+    justifyContent: 'center', // Center content vertically
   },
   transformationText: {
     fontSize: 14,
@@ -456,33 +471,60 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.8 }], // Scale down the models
   },
   fullModel: {
-    width: '100%',
-    height: '100%',
+    width: '90%',
+    maxWidth: 400,
+    height: '70%',
+    maxHeight: 500,
+    alignSelf: 'center',
   },
   modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  },
-  modalCloseButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    zIndex: 1,
-  },
-  verticalModels: {
-    flexDirection: 'column',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingVertical: 16,
+    padding: 0,
+  },
+  modalHeaderFixed: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    backgroundColor: 'rgba(20,20,20,0.95)',
+    paddingTop: 32,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+  modalCloseButtonTop: {
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 20,
+    padding: 6,
+    marginRight: 12,
+  },
+  modalTitle: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 20,
+    flex: 1,
+  },
+  modalScrollContent: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingBottom: 32,
+    width: '100%',
+  },
+  modalModelContainer: {
+    marginTop: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
     width: '100%',
   },
   modelNormal: {
-    width: 320,
-    height: 400,
-    marginVertical: 12,
-    alignSelf: 'center',
+    width: 340,
+    height: 500, // Increased height for a larger model
+    marginTop: 16,
+    marginBottom: 8,
+    alignSelf: 'center', // Already centers horizontally, keep for clarity
   },
   modelLabel: {
     fontSize: 16,
@@ -491,5 +533,30 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 8,
     alignSelf: 'center',
+  },
+  comparisonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  comparisonModelContainer: {
+    alignItems: 'center',
+    width: '45%',
+  },
+  comparisonModel: {
+    width: '100%',
+    aspectRatio: 0.7,
+    maxWidth: 180,
+    maxHeight: 400,
+  },
+  comparisonLabel: {
+    color: Colors.dark.text,
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

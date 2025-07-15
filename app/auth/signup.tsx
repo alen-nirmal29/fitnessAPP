@@ -7,6 +7,7 @@ import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import { useAuthStore } from '@/store/auth-store';
+import BackButton from '@/components/BackButton';
 
 export default function SignupScreen() {
   const [name, setName] = useState('');
@@ -69,9 +70,6 @@ export default function SignupScreen() {
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <ArrowLeft size={24} color={Colors.dark.text} />
-          </TouchableOpacity>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Sign up to start your fitness journey</Text>
         </View>

@@ -9,11 +9,22 @@ import Human2DModel from '@/components/Human2DModel';
 import { useAuthStore } from '@/store/auth-store';
 import { useWorkoutSessionStore } from '@/store/workout-session-store';
 import { useWorkoutStore } from '@/store/workout-store';
+import LottieView from 'lottie-react-native';
+import { Animated } from 'react-native';
 
 export default function ProgressScreen() {
   const { user } = useAuthStore();
   const { workoutStats, completedWorkouts } = useWorkoutSessionStore();
   const { currentPlan, workoutProgress, progressMeasurements, generateProgressMeasurements } = useWorkoutStore();
+
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   // Mock goal measurements for demonstration
   const goalMeasurements = useMemo(() => {
@@ -178,6 +189,16 @@ export default function ProgressScreen() {
         <Text style={styles.subtitle}>Track your fitness journey</Text>
       </View>
 
+      {/* Lottie Animation for Progress */}
+      <View style={styles.lottieContainer}>
+        <LottieView
+          source={require('../../assets/animations/progress.json')}
+          autoPlay
+          loop
+          style={styles.lottie}
+        />
+      </View>
+
       <Card style={styles.summaryCard}>
         <Text style={styles.cardTitle}>Weekly Summary</Text>
         
@@ -203,58 +224,41 @@ export default function ProgressScreen() {
       </Card>
 
       <Text style={styles.sectionTitle}>Body Transformation</Text>
-      
-      {/* Show progress comparison if we have progress measurements */}
-      {progressMeasurements && planProgress > 0 ? (
-        <View style={styles.modelContainer}>
+      {/* Fade-in for model area, extra margin for space */}
+      <Animated.View style={[styles.modelContainer, { opacity: fadeAnim }]}> 
+        {/* Show progress comparison if we have progress measurements */}
+        {progressMeasurements && planProgress > 0 ? (
           <View style={styles.modelHeader}>
             <Text style={styles.modelTitle}>Your Progress ({Math.round(planProgress)}% Complete)</Text>
             <Text style={styles.modelSubtitle}>
               See how your body has transformed after completing {Math.round(planProgress)}% of your workout plan
             </Text>
           </View>
-          <View style={styles.verticalModels}>
-            <Text style={styles.modelLabel}>Current</Text>
-            <Human2DModel 
-              user={user}
-              interactive={false}
-              style={styles.modelNormal}
-            />
-            <Text style={styles.modelLabel}>After</Text>
-            <Human2DModel 
-              user={user}
-              progressMeasurements={progressMeasurements}
-              showProgress={true}
-              interactive={false}
-              style={styles.modelNormal}
-            />
-          </View>
-        </View>
-      ) : (
-        <View style={styles.modelContainer}>
+        ) : (
           <View style={styles.modelHeader}>
             <Text style={styles.modelTitle}>Current vs. Goal</Text>
             <Text style={styles.modelSubtitle}>
               Compare your current body model with your goal
             </Text>
           </View>
-          <View style={styles.verticalModels}>
-            <Text style={styles.modelLabel}>Current</Text>
-            <Human2DModel 
-              user={user}
-              interactive={false}
-              style={styles.modelNormal}
-            />
-            <Text style={styles.modelLabel}>Goal</Text>
-            <Human2DModel 
-              user={user}
-              goalMeasurements={goalMeasurements}
-              interactive={false}
-              style={styles.modelNormal}
-            />
-          </View>
+        )}
+        <View style={styles.verticalModels}>
+          <Text style={styles.modelLabel}>Current</Text>
+          <Human2DModel 
+            user={user}
+            interactive={false}
+            style={styles.modelNormal}
+          />
+          <Text style={styles.modelLabel}>After</Text>
+          <Human2DModel 
+            user={user}
+            progressMeasurements={progressMeasurements}
+            showProgress={true}
+            interactive={false}
+            style={styles.modelNormal}
+          />
         </View>
-      )}
+      </Animated.View>
 
       <Text style={styles.sectionTitle}>Measurements Progress</Text>
       
@@ -404,6 +408,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.dark.subtext,
   },
+  lottieContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+    marginTop: 8,
+  },
+  lottie: {
+    width: 180,
+    height: 180,
+  },
   summaryCard: {
     marginBottom: 24,
   },
@@ -438,7 +451,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   modelContainer: {
-    marginBottom: 24,
+    marginBottom: 40, // more space
+    marginTop: 8, // more space above
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
   },
   modelHeader: {
     marginBottom: 16,

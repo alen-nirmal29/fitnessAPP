@@ -8,6 +8,7 @@ import Button from '@/components/Button';
 import GoalCard from '@/components/GoalCard';
 import { useAuthStore } from '@/store/auth-store';
 import { SpecificGoal } from '@/types/user';
+import BackButton from '@/components/BackButton';
 
 export default function SpecificGoalsScreen() {
   const { updateProfile, completeOnboarding, user, setInOnboarding } = useAuthStore();
@@ -109,13 +110,10 @@ export default function SpecificGoalsScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Button
-            title="Back"
+          <BackButton
             onPress={handleBack}
-            variant="outline"
-            size="medium"
-            style={styles.backButton}
             disabled={isLoading}
+            style={styles.backButton}
           />
           <Button
             title="Complete Setup"

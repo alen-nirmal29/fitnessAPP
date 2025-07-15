@@ -10,6 +10,7 @@ import Input from '@/components/Input';
 import Card from '@/components/Card';
 import { useAuthStore } from '@/store/auth-store';
 import { BodyComposition } from '@/types/user';
+import BackButton from '@/components/BackButton';
 
 export default function BodyCompositionScreen() {
   const { updateProfile, user, setInOnboarding } = useAuthStore();
@@ -345,13 +346,10 @@ export default function BodyCompositionScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Button
-            title="Back"
+          <BackButton
             onPress={handleBack}
-            variant="outline"
-            size="large"
-            style={styles.button}
             disabled={isLoading}
+            style={styles.button}
           />
           <Button
             title="Next"

@@ -61,8 +61,18 @@ export default function PlanSelectionScreen() {
           onPress={handleCreateCustomPlan}
           variant="primary"
           size="large"
-          style={[styles.customButton, { minWidth: '100%', width: '100%' }]}
-          leftIcon={<Plus size={20} color={Colors.dark.background} />}
+          style={[
+            styles.customButton,
+            {
+              minWidth: 500,
+              paddingHorizontal: 175,
+              width: undefined,
+              alignSelf: 'center',
+              justifyContent: 'center',
+            },
+          ]}
+          textStyle={{ textAlign: 'center', width: '100%' }}
+          // Removed leftIcon to center the text perfectly
         />
 
         <View style={styles.plansContainer}>

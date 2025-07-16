@@ -186,20 +186,23 @@ const styles = StyleSheet.create({
   },
   smallButton: {
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 24, // increased from 16
     minHeight: 48,
+    minWidth: 120, // ensure a comfortable minWidth
     borderRadius: 12,
   },
   mediumButton: {
     paddingVertical: 16,
-    paddingHorizontal: 32,
+    paddingHorizontal: 36, // increased from 32
     minHeight: 56,
+    minWidth: 140, // increased from 120
     borderRadius: 12,
   },
   largeButton: {
     paddingVertical: 20,
-    paddingHorizontal: 40,
+    paddingHorizontal: 48, // increased from 40
     minHeight: 64,
+    minWidth: 180, // ensure a comfortable minWidth
     borderRadius: 12,
   },
   squareButton: {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Platform, SafeAreaView } from 'react-native';
+import { ScrollView as RNScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { MessageSquare } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -59,7 +60,7 @@ export default function PlanGeneratorScreen() {
       <View style={styles.content}>
         <ScrollView 
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 }]} // add extra bottom padding
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -80,26 +81,33 @@ export default function PlanGeneratorScreen() {
 
           <View style={styles.form}>
             <Text style={styles.label}>Plan Duration</Text>
-            <View style={styles.durationContainer}>
+            <RNScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.durationContainer}
+            >
               <Button
                 title="1 Month"
                 onPress={() => handleDurationSelect('1_month')}
                 variant={duration === '1_month' ? 'primary' : 'outline'}
                 style={styles.durationButton}
+                textStyle={{ textAlign: 'center', fontSize: 14 }}
               />
               <Button
                 title="3 Months"
                 onPress={() => handleDurationSelect('3_month')}
                 variant={duration === '3_month' ? 'primary' : 'outline'}
                 style={styles.durationButton}
+                textStyle={{ textAlign: 'center', fontSize: 14 }}
               />
               <Button
                 title="6 Months"
                 onPress={() => handleDurationSelect('6_month')}
                 variant={duration === '6_month' ? 'primary' : 'outline'}
                 style={styles.durationButton}
+                textStyle={{ textAlign: 'center', fontSize: 14 }}
               />
-            </View>
+            </RNScrollView>
 
             <Input
               label="Additional Details (Optional)"
@@ -130,7 +138,8 @@ export default function PlanGeneratorScreen() {
           )}
         </ScrollView>
 
-        <View style={styles.footer}>
+        {/* Fixed footer for action buttons */}
+        <View style={[styles.footer, { position: 'absolute', left: 0, right: 0, bottom: 0 }]}> 
           <BackButton
             onPress={handleBack}
             style={styles.backButton}
@@ -207,8 +216,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   durationButton: {
-    flex: 1,
-    minHeight: 48,
+    width: 96, // slightly larger width
+    minWidth: 96,
+    maxWidth: 96,
+    minHeight: 38, // slightly larger height
+    alignSelf: 'center',
+    marginHorizontal: 4,
+    paddingVertical: 6, // slightly more vertical padding
+    paddingHorizontal: 0,
   },
   messageInput: {
     height: 120,

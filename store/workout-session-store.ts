@@ -363,7 +363,17 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
     }),
     {
       name: 'workout-session-storage',
-      storage: createJSONStorage(() => AsyncStorage),
+      // Add a custom hydrate function to ensure startTime and endTime are Dates
+      onRehydrateStorage: () => (state) => {
+        if (state && state.currentSession) {
+          if (state.currentSession.startTime && typeof state.currentSession.startTime === 'string') {
+            state.currentSession.startTime = new Date(state.currentSession.startTime);
+          }
+          if (state.currentSession.endTime && typeof state.currentSession.endTime === 'string') {
+            state.currentSession.endTime = new Date(state.currentSession.endTime);
+          }
+        }
+      },
     }
   )
 );

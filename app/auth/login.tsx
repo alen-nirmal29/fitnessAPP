@@ -64,7 +64,7 @@ export default function LoginScreen() {
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <BackButton onPress={handleBack} style={styles.backButton} />
+          {/* Removed BackButton to prevent navigating back from Welcome Back screen */}
           <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>Sign in to continue your fitness journey</Text>
         </View>

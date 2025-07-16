@@ -12,7 +12,7 @@
     "@lottiefiles/dotlottie-react": "^0.14.3",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/native": "^7.1.6",
-    "@react-three/drei": "^10.4.4",
+    "@react-three/drei": "^10.5.1",
     "@react-three/fiber": "^9.2.0",
     "@types/three": "^0.178.1",
     "expo": "^53.0.19",

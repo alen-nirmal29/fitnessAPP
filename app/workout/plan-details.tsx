@@ -1,11 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { Calendar, Clock, ArrowRight, CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
-import Human2DModel from '@/components/Human2DModel';
+import Body3DModel from '@/components/Body3DModel';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useAuthStore } from '@/store/auth-store';
 import BackButton from '@/components/BackButton';
@@ -18,6 +18,23 @@ export default function PlanDetailsScreen() {
     router.replace('/workout/plan-selection');
     return null;
   }
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
 
   const getDurationText = (duration: string) => {
     switch (duration) {
@@ -163,11 +180,9 @@ export default function PlanDetailsScreen() {
             </Text>
             <View style={styles.verticalModels}>
               <Text style={styles.modelLabel}>Current</Text>
-              <Human2DModel 
-                user={user}
-                interactive={false}
-                style={styles.modelNormal}
-              />
+              <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], width: '100%', height: 350, marginVertical: 12, alignSelf: 'center' }}>
+                <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
+              </Animated.View>
               <Text style={styles.modelLabel}>Goal</Text>
               <Human2DModel 
                 user={user}

@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Animated, Dimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Dumbbell, Award, TrendingUp, Calendar, Clock, Target, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import Human2DModel from '@/components/Human2DModel';
+import Body3DModel from '@/components/Body3DModel';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
@@ -17,6 +17,23 @@ export default function HomeScreen() {
   const { currentPlan, setCurrentPlan } = useWorkoutStore();
   const { workoutStats, getTodayWorkouts } = useWorkoutSessionStore();
   const [showComparisonModal, setShowComparisonModal] = useState(false);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
 
   // Move setCurrentPlan to useEffect to avoid state update during render
   useEffect(() => {
@@ -217,11 +234,9 @@ export default function HomeScreen() {
         </Text>
         <View style={styles.verticalModels}>
           <Text style={styles.modelLabel}>Current</Text>
-          <Human2DModel 
-            user={user}
-            interactive={false}
-            style={styles.modelNormal}
-          />
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], width: '100%', height: 350, marginVertical: 12, alignSelf: 'center' }}>
+            <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
+          </Animated.View>
           <Text style={styles.modelLabel}>Goal</Text>
           <Human2DModel 
             user={user}
@@ -253,12 +268,9 @@ export default function HomeScreen() {
           </View>
           <ScrollView contentContainerStyle={styles.modalScrollContent} bounces={false}>
             <View style={{ width: '95%', alignItems: 'flex-start', marginTop: 40, marginBottom: 16, alignSelf: 'center', height: 700, backgroundColor: '#181C22', borderRadius: 24, padding: 12, paddingTop: 180 }}>
-              <Human2DModel
-                goalMeasurements={goalMeasurements}
-                showComparison={true}
-                interactive={false}
-                style={{ width: 380, height: 440, marginLeft: 0 }}
-              />
+              <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], width: '100%', height: 400, alignSelf: 'center' }}>
+                <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
+              </Animated.View>
             </View>
           </ScrollView>
         </View>

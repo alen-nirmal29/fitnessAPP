@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
 import { TrendingUp, Calendar, Scale, Ruler } from 'lucide-react-native';
 import { SpecificGoal } from '@/types/user';
 import Colors from '@/constants/colors';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
-import Human2DModel from '@/components/Human2DModel';
+import Body3DModel from '@/components/Body3DModel';
 import { useAuthStore } from '@/store/auth-store';
 import { useWorkoutSessionStore } from '@/store/workout-session-store';
 import { useWorkoutStore } from '@/store/workout-store';
@@ -17,13 +17,21 @@ export default function ProgressScreen() {
   const { workoutStats, completedWorkouts } = useWorkoutSessionStore();
   const { currentPlan, workoutProgress, progressMeasurements, generateProgressMeasurements } = useWorkoutStore();
 
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
   React.useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      })
+    ]).start();
   }, []);
 
   // Mock goal measurements for demonstration
@@ -244,11 +252,9 @@ export default function ProgressScreen() {
         )}
         <View style={styles.verticalModels}>
           <Text style={styles.modelLabel}>Current</Text>
-          <Human2DModel 
-            user={user}
-            interactive={false}
-            style={styles.modelNormal}
-          />
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], width: '100%', height: 350, marginVertical: 12, alignSelf: 'center' }}>
+            <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
+          </Animated.View>
           <Text style={styles.modelLabel}>After</Text>
           <Human2DModel 
             user={user}

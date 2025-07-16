@@ -238,12 +238,6 @@ export default function HomeScreen() {
             <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
           </Animated.View>
           <Text style={styles.modelLabel}>Goal</Text>
-          <Human2DModel 
-            user={user}
-            goalMeasurements={goalMeasurements}
-            interactive={false}
-            style={styles.modelNormal}
-          />
         </View>
         <Button
           title="View Full Comparison"

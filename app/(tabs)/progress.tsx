@@ -10,7 +10,6 @@ import { useAuthStore } from '@/store/auth-store';
 import { useWorkoutSessionStore } from '@/store/workout-session-store';
 import { useWorkoutStore } from '@/store/workout-store';
 import LottieView from 'lottie-react-native';
-import { Animated } from 'react-native';
 
 export default function ProgressScreen() {
   const { user } = useAuthStore();
@@ -256,13 +255,7 @@ export default function ProgressScreen() {
             <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
           </Animated.View>
           <Text style={styles.modelLabel}>After</Text>
-          <Human2DModel 
-            user={user}
-            progressMeasurements={progressMeasurements}
-            showProgress={true}
-            interactive={false}
-            style={styles.modelNormal}
-          />
+          <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
         </View>
       </Animated.View>
 

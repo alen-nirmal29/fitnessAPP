@@ -184,12 +184,6 @@ export default function PlanDetailsScreen() {
                 <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
               </Animated.View>
               <Text style={styles.modelLabel}>Goal</Text>
-              <Human2DModel 
-                user={user}
-                goalMeasurements={getGoalMeasurements()}
-                interactive={false}
-                style={styles.modelNormal}
-              />
             </View>
           </Card>
         </View>

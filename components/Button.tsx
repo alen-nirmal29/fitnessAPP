@@ -166,6 +166,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
+    paddingVertical: 12, // set vertical padding for gradient background to 12
   },
   primaryButton: {
     backgroundColor: 'transparent',
@@ -185,10 +186,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   smallButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24, // increased from 16
-    minHeight: 48,
-    minWidth: 120, // ensure a comfortable minWidth
     borderRadius: 12,
   },
   mediumButton: {

@@ -16,7 +16,7 @@ export default function BackButton({ onPress, disabled, style }: BackButtonProps
       variant="outline"
       size="small"
       disabled={disabled}
-      style={[{ minWidth: 80 }, style]}
+      style={[{ width: 130, height: 48, minWidth: 0, minHeight: 0, paddingHorizontal: 18, paddingVertical: 10 }, style]}
     />
   );
 } 

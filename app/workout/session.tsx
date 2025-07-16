@@ -360,8 +360,8 @@ export default function WorkoutSessionScreen() {
             title={currentSession.state === 'active' || currentSession.state === 'resting' ? 'Pause' : 'Resume'}
             onPress={handleStartPause}
             variant="outline"
-            size="small"
-            style={[styles.controlButton, { maxWidth: 160, alignSelf: 'center' }]}
+            size="medium"
+            style={{ minHeight: 40, paddingVertical: 8, paddingHorizontal: 18, minWidth: 100, maxWidth: 220 }}
             leftIcon={
               currentSession.state === 'active' || currentSession.state === 'resting' ? 
               <Pause size={20} color={Colors.dark.accent} /> : 
@@ -373,8 +373,8 @@ export default function WorkoutSessionScreen() {
             title={currentSession.isRestTimer ? 'Skip Rest' : (currentSession.currentSet >= currentSession.totalSets ? 'Complete Exercise' : 'Next Set')}
             onPress={handleNextSet}
             variant="primary"
-            size="small"
-            style={[styles.controlButton, { maxWidth: 160, alignSelf: 'center' }]}
+            size="medium"
+            style={{ minHeight: 40, paddingVertical: 8, paddingHorizontal: 18, minWidth: 100, maxWidth: 220 }}
             leftIcon={<SkipForward size={20} color="#fff" />}
           />
         </View>
@@ -385,30 +385,30 @@ export default function WorkoutSessionScreen() {
             title="Complete Exercise"
             onPress={handleCompleteExercise}
             variant="outline"
-            size="small"
-            style={[styles.actionButton, { maxWidth: 160, alignSelf: 'center' }]}
+            size="medium"
+            style={{ alignSelf: 'center', minHeight: 56, paddingVertical: 8, paddingHorizontal: 18, minWidth: 180, maxWidth: 240 }}
           />
           
           <Button
             title="End Workout"
             onPress={handleEndWorkout}
             variant="outline"
-            size="small"
-            style={[styles.actionButton, { maxWidth: 160, alignSelf: 'center' }]}
+            size="medium"
+            style={{ alignSelf: 'center', minHeight: 56, paddingVertical: 8, paddingHorizontal: 18, minWidth: 180, maxWidth: 240 }}
           />
         </View>
       </ScrollView>
 
       {/* Bottom Actions */}
-      <View style={[styles.bottomActions, { padding: 8 }]}>
+      <View style={styles.bottomActions}>
         <Button
           title="Cancel Workout"
           onPress={handleCancelWorkout}
           variant="text"
-          size="small"
+          size="medium"
+          style={{ minHeight: 40, paddingVertical: 8, paddingHorizontal: 18, minWidth: 100, maxWidth: 220 }}
           leftIcon={<Square size={16} color={Colors.dark.error} />}
           textStyle={{ color: Colors.dark.error }}
-          style={{ maxWidth: 160, alignSelf: 'center' }}
         />
       </View>
     </View>
@@ -609,16 +609,21 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: 16,
+    alignItems: 'center',
   },
   actionButton: {
     width: '100%',
+    minWidth: 160, // ensure enough width for the text
+    flexShrink: 1, // allow shrinking to fit container
   },
   bottomActions: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 8,
+    paddingTop: 16,
+    paddingBottom: 24,
+    paddingHorizontal: 8,
     backgroundColor: Colors.dark.background,
     borderTopWidth: 1,
     borderTopColor: Colors.ui.border,

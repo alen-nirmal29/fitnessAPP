@@ -109,11 +109,11 @@ export default function SpecificGoalsScreen() {
           />
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, {alignItems: 'center'}]}>
           <BackButton
             onPress={handleBack}
             disabled={isLoading}
-            style={styles.backButton}
+            style={{ marginRight: 12 }}
           />
           <Button
             title="Complete Setup"

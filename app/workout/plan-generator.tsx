@@ -142,7 +142,7 @@ export default function PlanGeneratorScreen() {
         <View style={[styles.footer, { position: 'absolute', left: 0, right: 0, bottom: 0 }]}> 
           <BackButton
             onPress={handleBack}
-            style={styles.backButton}
+            // style={styles.backButton} // Remove style prop to use default compact BackButton
           />
           <Button
             title="Generate Plan"

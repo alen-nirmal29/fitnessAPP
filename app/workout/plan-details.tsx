@@ -180,17 +180,17 @@ export default function PlanDetailsScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, {alignItems: 'center'}]}>
         <BackButton
           onPress={handleBack}
-          style={styles.button}
+          style={{ marginRight: 12 }}
         />
         <Button
           title="Start Plan"
           onPress={handleStartPlan}
           variant="primary"
           size="large"
-          style={styles.button}
+          style={[styles.button, { flex: 1 }]}
         />
       </View>
     </View>

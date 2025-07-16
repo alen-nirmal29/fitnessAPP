@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Image as RNImage } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { ArrowLeft, Mail, Lock } from 'lucide-react-native';
@@ -80,7 +80,6 @@ export default function LoginScreen() {
             error={errors.email}
             leftIcon={<Mail size={20} color={Colors.dark.subtext} />}
           />
-          
           <Input
             label="Password"
             placeholder="Enter your password"
@@ -90,24 +89,31 @@ export default function LoginScreen() {
             error={errors.password}
             leftIcon={<Lock size={20} color={Colors.dark.subtext} />}
           />
-          
+          <TouchableOpacity onPress={() => {}} style={styles.forgotPasswordRow}>
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
           {error && <Text style={styles.errorText}>{error}</Text>}
-          
           <Button
             title="Login"
             onPress={handleLogin}
             variant="primary"
             size="xlarge"
-            style={[styles.button, {minHeight: 64}]}
+            style={[styles.button, {minHeight: 48, marginTop: 16, marginBottom: 16}]}
             isLoading={isLoading}
           />
-          <Button
-            title="Create your account"
-            onPress={handleSignup}
-            variant="outline"
-            size="xlarge"
-            style={[styles.button, {minHeight: 64}]}
-          />
+          <View style={styles.dividerRow}>
+            <View style={styles.divider} />
+            <Text style={styles.orText}>or</Text>
+            <View style={styles.divider} />
+          </View>
+          <TouchableOpacity style={styles.googleButtonDark} onPress={() => {}}>
+            <RNImage
+              source={require('../../assets/images/google-logo.png')}
+              style={styles.googleLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.googleButtonTextDark}>Sign in with Google</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
@@ -170,5 +176,77 @@ const styles = StyleSheet.create({
   footerLink: {
     color: Colors.dark.accent,
     fontWeight: 'bold',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginBottom: 0,
+    marginTop: 0,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    alignSelf: 'center',
+    minWidth: 220,
+    maxWidth: 320,
+  },
+  googleLogo: {
+    width: 24,
+    height: 24,
+    marginRight: 12,
+  },
+  googleButtonText: {
+    color: '#222',
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  forgotPasswordRow: {
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 8,
+  },
+  forgotPasswordText: {
+    color: '#1976D2',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#333',
+    marginHorizontal: 8,
+  },
+  orText: {
+    color: '#888',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  googleButtonDark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#222',
+    borderRadius: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 0,
+    alignSelf: 'center',
+    minWidth: 220,
+    maxWidth: 320,
+  },
+  googleButtonTextDark: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

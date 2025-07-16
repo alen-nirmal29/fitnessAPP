@@ -121,18 +121,18 @@ export default function BodyModelScreen() {
           <Text style={[styles.instructionsText, { color: Colors.dark.accent, fontWeight: 'bold', marginTop: 8 }]}>You are stronger than you think. Let's get started!</Text>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, {alignItems: 'center'}]}>
           <BackButton
             onPress={handleBack}
             disabled={isLoading}
-            style={styles.button}
+            style={{ marginRight: 12 }}
           />
           <Button
             title="Next"
             onPress={handleNext}
             variant="primary"
             size="large"
-            style={styles.button}
+            style={[styles.button, { flex: 1 }]}
             isLoading={isLoading}
             disabled={isLoading}
           />

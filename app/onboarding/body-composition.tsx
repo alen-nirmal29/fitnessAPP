@@ -345,11 +345,11 @@ export default function BodyCompositionScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, {alignItems: 'center'}]}>
           <BackButton
             onPress={handleBack}
             disabled={isLoading}
-            style={styles.button}
+            style={{ marginRight: 12 }}
           />
           <Button
             title="Next"

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, TouchableOpacity, Image as RNImage } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -77,46 +77,51 @@ export default function WelcomeScreen() {
         colors={[Colors.dark.background, '#000']}
         style={styles.gradient}
       >
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Dumbbell size={40} color={Colors.dark.gradient.primary} />
+        <View style={{flex: 1}}>
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Dumbbell size={40} color={Colors.dark.gradient.primary} />
+            </View>
+            <Text style={styles.appName}>FitTransform</Text>
           </View>
-          <Text style={styles.appName}>FitTransform</Text>
-        </View>
 
-        <View style={styles.heroContainer}>
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=1000' }}
-            style={styles.heroImage}
-            resizeMode="cover"
-          />
-          <LinearGradient
-            colors={['transparent', Colors.dark.background]}
-            style={styles.imageOverlay}
-          />
-        </View>
+          <View style={styles.heroContainer}>
+            <Image
+              source={{ uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=1000' }}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={['transparent', Colors.dark.background]}
+              style={styles.imageOverlay}
+            />
+          </View>
 
-        <View style={styles.content}>
           <Text style={styles.title}>Transform Your Body</Text>
           <Text style={styles.subtitle}>
             Personalized workout plans based on your body composition and fitness goals
           </Text>
+        </View>
 
-          <View style={styles.buttonContainer}>
-            <Button
-              title="Get Started"
-              onPress={handleGetStarted}
-              variant="primary"
-              size="xlarge"
-              style={[styles.button, {minHeight: 64}]}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.googleButton} onPress={() => {}}>
+            <RNImage
+              source={require('../assets/images/google-logo.png')}
+              style={styles.googleLogo}
+              resizeMode="contain"
             />
-            <Button
-              title="I already have an account"
-              onPress={handleLogin}
-              variant="outline"
-              size="xlarge"
-              style={[styles.button, {minHeight: 64}]}
-            />
+            <Text style={styles.googleButtonText}>Sign up with Google</Text>
+          </TouchableOpacity>
+          <Button
+            title="Get Started"
+            onPress={handleGetStarted}
+            variant="primary"
+            size="xlarge"
+            style={[styles.button, {minHeight: 64}]}
+          />
+          <View style={styles.loginRow}>
+            <Text style={styles.loginText}>Already have account? </Text>
+            <Text style={styles.loginLink} onPress={handleLogin}>Log in</Text>
           </View>
         </View>
       </LinearGradient>
@@ -190,17 +195,62 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.dark.text,
     marginBottom: 16,
+    marginTop: -48, // Move title further up
   },
   subtitle: {
     fontSize: 16,
     color: Colors.dark.subtext,
-    marginBottom: 32,
+    marginBottom: 8, // Reduce space below subtitle even more
     lineHeight: 24,
   },
   buttonContainer: {
-    gap: 16,
+    gap: 0, // No space between buttons
+    marginBottom: 32, // Move button group lower
+    paddingTop: 16, // Add space above buttons to move them down
   },
   button: {
     width: '100%',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginBottom: 0, // No space below Google button
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    alignSelf: 'center',
+    minWidth: 220,
+    maxWidth: 320,
+  },
+  googleLogo: {
+    width: 24,
+    height: 24,
+    marginRight: 12,
+  },
+  googleButtonText: {
+    color: '#222',
+    fontSize: 16,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  loginRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  loginText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  loginLink: {
+    color: '#1976D2', // blue
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

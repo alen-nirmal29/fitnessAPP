@@ -255,7 +255,7 @@ export default function ProgressScreen() {
             <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
           </Animated.View>
           <Text style={styles.modelLabel}>After</Text>
-          <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
+          {/* Intentionally left empty for future model implementation */}
         </View>
       </Animated.View>
 

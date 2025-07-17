@@ -8,17 +8,21 @@ import Body3DModel from '@/components/Body3DModel';
 import { useAuthStore } from '@/store/auth-store';
 import { BodyMeasurements } from '@/types/user';
 import BackButton from '@/components/BackButton';
+import Input from '@/components/Input';
+import { Ruler, Weight, User } from 'lucide-react-native';
 
 export default function BodyModelScreen() {
   const { updateProfile, user, setInOnboarding } = useAuthStore();
-  const [measurements, setMeasurements] = useState<BodyMeasurements>({
-    chest: 50,
-    waist: 50,
-    hips: 50,
-    arms: 50,
-    legs: 50,
-    shoulders: 50,
+  const [measurements, setMeasurements] = useState({
+    chest: '',
+    neck: '',
+    waist: '',
+    leftarm: '',
+    rightarm: '',
+    leftthigh: '',
+    rightthigh: '',
   });
+  const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -48,28 +52,40 @@ export default function BodyModelScreen() {
     }));
   }, []);
 
+  const handleInputChange = (field: string, value: string) => {
+    setMeasurements(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => ({ ...prev, [field]: undefined }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    const requiredFields = ['chest','neck','waist','leftarm','rightarm','leftthigh','rightthigh'];
+    requiredFields.forEach(field => {
+      if (!measurements[field] || isNaN(Number(measurements[field])) || Number(measurements[field]) <= 0) {
+        newErrors[field] = 'Required';
+      }
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleNext = async () => {
-    console.log('Body model handleNext called');
-    console.log('Current user:', user);
-    console.log('Measurements:', measurements);
-    
+    if (!validateForm()) return;
     setIsLoading(true);
-    
     try {
-      // Ensure onboarding flag is set
       setInOnboarding(true);
-      
-      console.log('Updating current measurements...');
-      
       updateProfile({
-        currentMeasurements: measurements,
+        currentMeasurements: {
+          chest: Number(measurements.chest),
+          neck: Number(measurements.neck),
+          waist: Number(measurements.waist),
+          leftarm: Number(measurements.leftarm),
+          rightarm: Number(measurements.rightarm),
+          leftthigh: Number(measurements.leftthigh),
+          rightthigh: Number(measurements.rightthigh),
+        },
       });
-      
-      console.log('Current measurements updated, navigating to specific-goals...');
-      
-      // Navigate to specific goals page using replace to prevent navigation stack issues
       router.replace('/onboarding/specific-goals');
-      
     } catch (error) {
       console.error('Error updating measurements:', error);
     } finally {
@@ -95,8 +111,25 @@ export default function BodyModelScreen() {
         </Animated.View>
 
         <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }] }}>
-          <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
+          <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} measurements={{
+            chest: Number(measurements.chest) || 50,
+            neck: Number(measurements.neck) || 40,
+            waist: Number(measurements.waist) || 50,
+            leftarm: Number(measurements.leftarm) || 30,
+            rightarm: Number(measurements.rightarm) || 30,
+            leftthigh: Number(measurements.leftthigh) || 40,
+            rightthigh: Number(measurements.rightthigh) || 40,
+          }} />
         </Animated.View>
+        <View style={{ marginTop: 24 }}>
+          <Input label="Chest (cm)" value={measurements.chest} onChangeText={v => handleInputChange('chest', v)} keyboardType="numeric" error={errors.chest} leftIcon={<Ruler size={20} color={Colors.dark.subtext} />} />
+          <Input label="Neck (cm)" value={measurements.neck} onChangeText={v => handleInputChange('neck', v)} keyboardType="numeric" error={errors.neck} leftIcon={<Ruler size={20} color={Colors.dark.subtext} />} />
+          <Input label="Waist (cm)" value={measurements.waist} onChangeText={v => handleInputChange('waist', v)} keyboardType="numeric" error={errors.waist} leftIcon={<Ruler size={20} color={Colors.dark.subtext} />} />
+          <Input label="Left Arm (cm)" value={measurements.leftarm} onChangeText={v => handleInputChange('leftarm', v)} keyboardType="numeric" error={errors.leftarm} leftIcon={<Ruler size={20} color={Colors.dark.subtext} />} />
+          <Input label="Right Arm (cm)" value={measurements.rightarm} onChangeText={v => handleInputChange('rightarm', v)} keyboardType="numeric" error={errors.rightarm} leftIcon={<Ruler size={20} color={Colors.dark.subtext} />} />
+          <Input label="Left Thigh (cm)" value={measurements.leftthigh} onChangeText={v => handleInputChange('leftthigh', v)} keyboardType="numeric" error={errors.leftthigh} leftIcon={<Ruler size={20} color={Colors.dark.subtext} />} />
+          <Input label="Right Thigh (cm)" value={measurements.rightthigh} onChangeText={v => handleInputChange('rightthigh', v)} keyboardType="numeric" error={errors.rightthigh} leftIcon={<Ruler size={20} color={Colors.dark.subtext} />} />
+        </View>
 
         <View style={styles.instructionsContainer}>
           <Text style={styles.instructionsTitle}>How to Use</Text>

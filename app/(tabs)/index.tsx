@@ -235,7 +235,7 @@ export default function HomeScreen() {
         <View style={styles.verticalModels}>
           <Text style={styles.modelLabel}>Current</Text>
           <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], width: '100%', height: 350, marginVertical: 12, alignSelf: 'center' }}>
-            <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
+            <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} measurements={user?.currentMeasurements} />
           </Animated.View>
           <Text style={styles.modelLabel}>Goal</Text>
         </View>
@@ -263,7 +263,7 @@ export default function HomeScreen() {
           <ScrollView contentContainerStyle={styles.modalScrollContent} bounces={false}>
             <View style={{ width: '95%', alignItems: 'flex-start', marginTop: 40, marginBottom: 16, alignSelf: 'center', height: 700, backgroundColor: '#181C22', borderRadius: 24, padding: 12, paddingTop: 180 }}>
               <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], width: '100%', height: 400, alignSelf: 'center' }}>
-                <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} />
+                <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} measurements={user?.currentMeasurements} />
               </Animated.View>
             </View>
           </ScrollView>

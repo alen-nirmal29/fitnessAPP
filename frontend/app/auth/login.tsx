@@ -14,7 +14,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
-  const { login, isLoading, error } = useAuthStore();
+  const { login, loginWithGoogle, isLoading, error, isAuthenticated } = useAuthStore();
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -53,6 +53,20 @@ export default function LoginScreen() {
 
   const handleSignup = () => {
     router.push('/auth/signup');
+  };
+
+  const handleGoogleLogin = async () => {
+    console.log('Google login button pressed');
+    try {
+      await loginWithGoogle();
+      // Only navigate if authenticated
+      if (useAuthStore.getState().isAuthenticated) {
+        router.replace('/(tabs)');
+      }
+    } catch (e) {
+      // Error is handled in the store
+      console.log('Google login error', e);
+    }
   };
 
   return (
@@ -106,13 +120,13 @@ export default function LoginScreen() {
             <Text style={styles.orText}>or</Text>
             <View style={styles.divider} />
           </View>
-          <TouchableOpacity style={styles.googleButtonDark} onPress={() => {}}>
+          <TouchableOpacity style={styles.googleButtonDark} onPress={handleGoogleLogin} disabled={isLoading}>
             <RNImage
               source={require('../../assets/images/google-logo.png')}
               style={styles.googleLogo}
               resizeMode="contain"
             />
-            <Text style={styles.googleButtonTextDark}>Sign in with Google</Text>
+            <Text style={styles.googleButtonTextDark}>{isLoading ? 'Signing in...' : 'Sign in with Google'}</Text>
           </TouchableOpacity>
         </View>
 

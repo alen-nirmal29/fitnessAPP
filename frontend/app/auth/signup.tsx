@@ -15,7 +15,7 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
   
-  const { signup, isLoading, error } = useAuthStore();
+  const { signup, loginWithGoogle, isLoading, error, isAuthenticated } = useAuthStore();
 
   const validateForm = () => {
     const newErrors: { name?: string; email?: string; password?: string } = {};
@@ -59,6 +59,20 @@ export default function SignupScreen() {
 
   const handleLogin = () => {
     router.push('/auth/login');
+  };
+
+  const handleGoogleSignup = async () => {
+    console.log('Google signup button pressed');
+    try {
+      await loginWithGoogle();
+      // Only navigate if authenticated
+      if (useAuthStore.getState().isAuthenticated) {
+        router.replace('/onboarding/profile');
+      }
+    } catch (e) {
+      // Error is handled in the store
+      console.log('Google signup error', e);
+    }
   };
 
   return (
@@ -123,6 +137,9 @@ export default function SignupScreen() {
             <Text style={styles.footerLink}>Sign In</Text>
           </TouchableOpacity>
         </View>
+        <TouchableOpacity style={styles.googleButtonDark} onPress={handleGoogleSignup} disabled={isLoading}>
+          <Text style={styles.googleButtonTextDark}>{isLoading ? 'Signing up...' : 'Sign up with Google'}</Text>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -176,6 +193,19 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     color: Colors.dark.accent,
+    fontWeight: 'bold',
+  },
+  googleButtonDark: {
+    backgroundColor: '#4285F4',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  googleButtonTextDark: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });

@@ -7,12 +7,34 @@ import { Dumbbell } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import { useAuthStore } from '@/store/auth-store';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import { apiKey } from '@/firebase';
 import { usePathname } from 'expo-router';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const clientId = '876432031351-8afvah33lup8au3vbc6c0brisqtap0l3.apps.googleusercontent.com';
 
 export default function WelcomeScreen() {
   const { isAuthenticated, user, isInitialized, isInOnboarding } = useAuthStore();
   const [isReady, setIsReady] = useState(false);
+  const [isLoading, setLoading] = useState(false);
+  const [error, setErrorState] = useState<string | null>(null);
   const pathname = usePathname();
+
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId,
+    // Do not set redirectUri here; let the provider handle it
+  });
+
+  // Log the redirect URI for debugging
+  useEffect(() => {
+    if (request) {
+      // request.redirectUri is available on the request object
+      console.log('Google Auth redirect URI:', request.redirectUri);
+    }
+  }, [request]);
 
   useEffect(() => {
     // Wait for the auth store to be initialized (rehydrated from storage)
@@ -40,12 +62,53 @@ export default function WelcomeScreen() {
     }
   }, [isReady, isAuthenticated, user, pathname, isInOnboarding]);
 
+  useEffect(() => {
+    if (response?.type === 'success' && response.params.id_token) {
+      (async () => {
+        setLoading(true);
+        setErrorState(null);
+        try {
+          const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${apiKey}`;
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              postBody: `id_token=${response.params.id_token}&providerId=google.com`,
+              requestUri: makeRedirectUri({ useProxy: true } as any),
+              returnIdpCredential: true,
+              returnSecureToken: true,
+            }),
+          });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error.message);
+          setLoading(false);
+          setErrorState(null);
+          router.replace('/onboarding/profile');
+        } catch (e: any) {
+          setErrorState(e.message || 'Google sign-in failed');
+          setLoading(false);
+        }
+      })();
+    }
+  }, [response]);
+
   const handleGetStarted = () => {
     router.push('/auth/signup');
   };
 
   const handleLogin = () => {
     router.push('/auth/login');
+  };
+
+  const handleGoogleSignup = async () => {
+    setLoading(true);
+    setErrorState(null);
+    try {
+      await promptAsync({ useProxy: true });
+    } catch (e) {
+      setErrorState('Google signup error');
+      setLoading(false);
+    }
   };
 
   // Show loading screen while initializing
@@ -104,19 +167,19 @@ export default function WelcomeScreen() {
         </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.googleButton} onPress={() => {}}>
+          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup} disabled={isLoading}>
             <RNImage
               source={require('../assets/images/google-logo.png')}
               style={styles.googleLogo}
               resizeMode="contain"
             />
-            <Text style={styles.googleButtonText}>Sign up with Google</Text>
+            <Text style={styles.googleButtonText}>{isLoading ? 'Signing up...' : 'Sign up with Google'}</Text>
           </TouchableOpacity>
           <Button
             title="Get Started"
             onPress={handleGetStarted}
             variant="primary"
-            size="xlarge"
+            size="large"
             style={[styles.button, {minHeight: 64}]}
           />
           <View style={styles.loginRow}>
@@ -124,6 +187,7 @@ export default function WelcomeScreen() {
             <Text style={styles.loginLink} onPress={handleLogin}>Log in</Text>
           </View>
         </View>
+        {error && <Text style={styles.loadingText}>{error}</Text>}
       </LinearGradient>
     </View>
   );

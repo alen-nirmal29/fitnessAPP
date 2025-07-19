@@ -17,49 +17,96 @@ function Model({ gender, measurements }: { gender: 'male' | 'female', measuremen
   const { scene } = useGLTF(getModelUrl(gender));
   const groupRef = React.useRef<THREE.Group>(null);
 
-  // Calculate scale factors based on measurements (simple proportional scaling)
-  const scaleX = measurements
-    ? ((Number(measurements.chest) + Number(measurements.waist) + Number(measurements.leftarm) + Number(measurements.rightarm)) / 4) / 50
-    : 1;
-  const scaleY = measurements
-    ? ((Number(measurements.neck) + Number(measurements.leftthigh) + Number(measurements.rightthigh)) / 3) / 40
-    : 1;
-  const scaleZ = 1; // You can use another measurement for depth if desired
-
-  // Target size for the model to fit in the view (adjust as needed)
-  const TARGET_SIZE = 2.5; // In world units, fits nicely in camera view
-
   React.useLayoutEffect(() => {
-    if (groupRef.current) {
-      // Remove previous children
-      while (groupRef.current.children.length > 0) {
-        groupRef.current.remove(groupRef.current.children[0]);
-      }
-      // Clone the scene so we don't mutate the original
-      const model = scene.clone();
-      model.traverse((child: any) => {
-        if (child.isMesh) {
-          child.geometry.computeBoundingBox();
-        }
-      });
-      // Apply measurement-based scaling
-      model.scale.set(scaleX, scaleY, scaleZ);
-      // Compute bounding box after scaling
-      const box = new THREE.Box3().setFromObject(model);
-      const size = new THREE.Vector3();
-      box.getSize(size);
-      const maxDim = Math.max(size.x, size.y, size.z);
-      // Compute additional uniform scale to fit TARGET_SIZE
-      const fitScale = TARGET_SIZE / maxDim;
-      model.scale.multiplyScalar(fitScale);
-      // Recompute bounding box after fit scaling
-      const boxFit = new THREE.Box3().setFromObject(model);
-      const center = new THREE.Vector3();
-      boxFit.getCenter(center);
-      model.position.set(-center.x, -center.y, -center.z);
-      groupRef.current.add(model);
+    if (!groupRef.current) return;
+
+    // Clean previous model if exists
+    while (groupRef.current.children.length > 0) {
+      groupRef.current.remove(groupRef.current.children[0]);
     }
-  }, [scene, scaleX, scaleY, scaleZ]);
+
+    // Clone and prepare model
+    const model = scene.clone(true);
+    model.traverse((child: any) => {
+      if (!child.isMesh) return;
+
+      const name = child.name.toLowerCase();
+
+      // Neck
+      if (name.includes('neck') && measurements?.neck) {
+        const base = 40; // average neck cm
+        const scale = Number(measurements.neck) / base;
+        const safe = Math.min(Math.max(scale, 0.8), 1.3);
+        child.scale.set(safe, safe, safe);
+      }
+
+      // Chest
+      if (name.includes('chest') && measurements?.chest) {
+        const base = 95;
+        const scale = Number(measurements.chest) / base;
+        const safe = Math.min(Math.max(scale, 0.8), 1.4);
+        child.scale.set(safe, 1, safe);
+      }
+
+      // Waist
+      if (name.includes('waist') && measurements?.waist) {
+        const base = 85;
+        const scale = Number(measurements.waist) / base;
+        const safe = Math.min(Math.max(scale, 0.8), 1.4);
+        child.scale.set(safe, 1, safe);
+      }
+
+      // Left Arm
+      if (name.includes('leftarm') && measurements?.leftarm) {
+        const base = 30;
+        const scale = Number(measurements.leftarm) / base;
+        const safe = Math.min(Math.max(scale, 0.8), 1.4);
+        child.scale.set(safe, 1, safe);
+      }
+
+      // Right Arm
+      if (name.includes('rightarm') && measurements?.rightarm) {
+        const base = 30;
+        const scale = Number(measurements.rightarm) / base;
+        const safe = Math.min(Math.max(scale, 0.8), 1.4);
+        child.scale.set(safe, 1, safe);
+      }
+
+      // Left Thigh
+      if (name.includes('leftthigh') && measurements?.leftthigh) {
+        const base = 50;
+        const scale = Number(measurements.leftthigh) / base;
+        const safe = Math.min(Math.max(scale, 0.8), 1.4);
+        child.scale.set(safe, 1, safe);
+      }
+
+      // Right Thigh
+      if (name.includes('rightthigh') && measurements?.rightthigh) {
+        const base = 50;
+        const scale = Number(measurements.rightthigh) / base;
+        const safe = Math.min(Math.max(scale, 0.8), 1.4);
+        child.scale.set(safe, 1, safe);
+      }
+
+      child.geometry.computeBoundingBox();
+    });
+
+    // Fit the whole model into view
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const fitScale = 2.5 / maxDim;
+
+    model.scale.multiplyScalar(fitScale);
+
+    const boxFit = new THREE.Box3().setFromObject(model);
+    const center = new THREE.Vector3();
+    boxFit.getCenter(center);
+    model.position.set(-center.x, -center.y, -center.z);
+
+    groupRef.current.add(model);
+  }, [scene, measurements]);
 
   return <group ref={groupRef} />;
 }

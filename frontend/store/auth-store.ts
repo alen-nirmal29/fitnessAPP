@@ -70,11 +70,13 @@ export const useAuthStore = create<AuthStore>()(
               refreshToken: data.refreshToken,
               isLoading: false,
             });
+            console.log('Auth state after login:', get());
           } catch (error: any) {
             set({
               error: error.message || 'Invalid email or password',
               isLoading: false,
             });
+            console.log('Login error:', error);
           }
         },
 
@@ -104,11 +106,13 @@ export const useAuthStore = create<AuthStore>()(
               refreshToken: data.refreshToken,
               isLoading: false,
             });
+            console.log('Auth state after signup:', get());
           } catch (error: any) {
             set({
               error: error.message || 'Failed to create account',
               isLoading: false,
             });
+            console.log('Signup error:', error);
           }
         },
 
@@ -180,6 +184,9 @@ export const useAuthStore = create<AuthStore>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.initialize();
+          console.log('Auth state rehydrated:', state);
+        } else {
+          console.log('No auth state to rehydrate.');
         }
       },
     }

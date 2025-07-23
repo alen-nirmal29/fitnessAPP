@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "com.barath_18.fitshapepersonalizedfitnessapp337fs56p",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -22,7 +22,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.fitshape-personalized-fitness-app-337fs56p"
+      "package": "com.barath_18.fitshapepersonalizedfitnessapp337fs56p"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -39,6 +39,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://rork.com/"
+      },
+      "eas": {
+        "projectId": "23a1abd3-b179-45af-be51-5ff8de7b7fc2"
+      }
     }
   }
 }

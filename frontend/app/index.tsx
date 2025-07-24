@@ -11,6 +11,7 @@ import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { apiKey } from '@/firebase';
 import { usePathname } from 'expo-router';
+import { makeRedirectUri } from 'expo-auth-session';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -25,7 +26,7 @@ export default function WelcomeScreen() {
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId,
-    // Do not set redirectUri here; let the provider handle it
+    redirectUri: makeRedirectUri({ useProxy: false, scheme: 'myapp' }),
   });
 
   // Log the redirect URI for debugging
@@ -74,7 +75,7 @@ export default function WelcomeScreen() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               postBody: `id_token=${response.params.id_token}&providerId=google.com`,
-              requestUri: makeRedirectUri({ useProxy: true } as any),
+              requestUri: makeRedirectUri({ useProxy: false, scheme: 'myapp' }),
               returnIdpCredential: true,
               returnSecureToken: true,
             }),
@@ -104,7 +105,7 @@ export default function WelcomeScreen() {
     setLoading(true);
     setErrorState(null);
     try {
-      await promptAsync({ useProxy: true });
+      await promptAsync({ useProxy: false });
     } catch (e) {
       setErrorState('Google signup error');
       setLoading(false);

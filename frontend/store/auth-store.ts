@@ -186,7 +186,7 @@ export const useAuthStore = create<AuthStore>()(
           try {
             const clientId = '876432031351-h5hmbv4qj96aci5ngcrfqa4kdvef24s2.apps.googleusercontent.com';
             // 'useProxy' is not a valid property for makeRedirectUri or promptAsync in the latest expo-auth-session
-            const redirectUri = makeRedirectUri({ scheme: 'myapp' });
+            const redirectUri = makeRedirectUri({ scheme: 'com.rork.fitshape' });
             const discovery = {
               authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
               tokenEndpoint: 'https://oauth2.googleapis.com/token',

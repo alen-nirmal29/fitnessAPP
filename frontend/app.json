@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "com.rork.fitshape",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.fitshape-personalized-fitness-app-337fs56p"
+      "bundleIdentifier": "com.rork.fitshape"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.barath_18.fitshapepersonalizedfitnessapp337fs56p"
+      "package": "com.rork.fitshape"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"

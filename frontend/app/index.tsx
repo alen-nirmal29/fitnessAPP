@@ -15,7 +15,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const clientId = '876432031351-8afvah33lup8au3vbc6c0brisqtap0l3.apps.googleusercontent.com';
+const clientId = '876432031351-h5hmbv4qj96aci5ngcrfqa4kdvef24s2.apps.googleusercontent.com';
 
 export default function WelcomeScreen() {
   const { isAuthenticated, user, isInitialized, isInOnboarding } = useAuthStore();
@@ -26,7 +26,7 @@ export default function WelcomeScreen() {
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId,
-    redirectUri: makeRedirectUri({ useProxy: false, scheme: 'myapp' }),
+    redirectUri: makeRedirectUri({ useProxy: false, scheme: 'com.rork.fitshape' }),
   });
 
   // Log the redirect URI for debugging
@@ -75,7 +75,7 @@ export default function WelcomeScreen() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               postBody: `id_token=${response.params.id_token}&providerId=google.com`,
-              requestUri: makeRedirectUri({ useProxy: false, scheme: 'myapp' }),
+              requestUri: makeRedirectUri({ useProxy: false, scheme: 'com.rork.fitshape' }),
               returnIdpCredential: true,
               returnSecureToken: true,
             }),

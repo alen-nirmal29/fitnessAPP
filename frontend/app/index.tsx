@@ -9,9 +9,11 @@ import Button from '@/components/Button';
 import { useAuthStore } from '@/store/auth-store';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
-import { apiKey } from '@/firebase';
+import { apiKey, db } from '@/firebase';
 import { usePathname } from 'expo-router';
 import { makeRedirectUri } from 'expo-auth-session';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { UserProfile } from '@/types/user';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -29,40 +31,23 @@ export default function WelcomeScreen() {
     redirectUri: makeRedirectUri({ useProxy: false, scheme: 'com.rork.fitshape' }),
   });
 
-  // Log the redirect URI for debugging
   useEffect(() => {
-    if (request) {
-      // request.redirectUri is available on the request object
-      console.log('Google Auth redirect URI:', request.redirectUri);
-    }
-  }, [request]);
-
-  useEffect(() => {
-    // Wait for the auth store to be initialized (rehydrated from storage)
     if (isInitialized) {
       setIsReady(true);
     }
   }, [isInitialized]);
 
   useEffect(() => {
-    // Only run this redirect logic on the root page
     if (pathname === '/' && isReady && isAuthenticated && user) {
-      console.log('Index.tsx navigation check:', {
-        hasCompletedOnboarding: user.hasCompletedOnboarding,
-        isInOnboarding,
-        pathname
-      });
-      
       if (user.hasCompletedOnboarding) {
-        // Use replace to avoid navigation stack issues
         router.replace('/(tabs)');
       } else {
-        // Use replace to avoid navigation stack issues
         router.replace('/onboarding/profile');
       }
     }
   }, [isReady, isAuthenticated, user, pathname, isInOnboarding]);
 
+  // ✅ UPDATED GOOGLE LOGIN RESPONSE HANDLER
   useEffect(() => {
     if (response?.type === 'success' && response.params.id_token) {
       (async () => {
@@ -75,23 +60,42 @@ export default function WelcomeScreen() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               postBody: `id_token=${response.params.id_token}&providerId=google.com`,
-              requestUri: makeRedirectUri({ useProxy: false, scheme: 'com.rork.fitshape' }),
+              requestUri: 'http://localhost',
               returnIdpCredential: true,
               returnSecureToken: true,
             }),
           });
+  
           const data = await res.json();
           if (data.error) throw new Error(data.error.message);
-          setLoading(false);
-          setErrorState(null);
+  
+          const userProfile: UserProfile = {
+            id: data.localId,
+            email: data.email,
+            name: data.displayName || data.fullName || '',
+            hasCompletedOnboarding: false,
+          };
+  
+          const userDoc = await getDoc(doc(db, 'users', data.localId));
+          if (userDoc.exists()) {
+            const existingData = userDoc.data();
+            Object.assign(userProfile, existingData);
+          } else {
+            await setDoc(doc(db, 'users', data.localId), userProfile);
+          }
+  
+          useAuthStore.getState().setUser(userProfile, data.idToken, data.refreshToken);
           router.replace('/onboarding/profile');
         } catch (e: any) {
+          console.error('Google sign-in error:', e);
           setErrorState(e.message || 'Google sign-in failed');
+        } finally {
           setLoading(false);
         }
       })();
     }
   }, [response]);
+  
 
   const handleGetStarted = () => {
     router.push('/auth/signup');
@@ -112,7 +116,6 @@ export default function WelcomeScreen() {
     }
   };
 
-  // Show loading screen while initializing
   if (!isReady) {
     return (
       <View style={styles.loadingContainer}>
@@ -123,7 +126,6 @@ export default function WelcomeScreen() {
     );
   }
 
-  // Don't show welcome screen if user is authenticated
   if (isAuthenticated) {
     return (
       <View style={styles.loadingContainer}>
@@ -137,11 +139,8 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      <LinearGradient
-        colors={[Colors.dark.background, '#000']}
-        style={styles.gradient}
-      >
-        <View style={{flex: 1}}>
+      <LinearGradient colors={[Colors.dark.background, '#000']} style={styles.gradient}>
+        <View style={{ flex: 1 }}>
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Dumbbell size={40} color={Colors.dark.gradient.primary} />
@@ -181,7 +180,7 @@ export default function WelcomeScreen() {
             onPress={handleGetStarted}
             variant="primary"
             size="large"
-            style={[styles.button, {minHeight: 64}]}
+            style={[styles.button, { minHeight: 64 }]}
           />
           <View style={styles.loginRow}>
             <Text style={styles.loginText}>Already have account? </Text>
@@ -195,127 +194,31 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.dark.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: Colors.dark.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: Colors.dark.text,
-    marginTop: 16,
-    fontSize: 16,
-  },
-  gradient: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
-  },
+  container: { flex: 1, backgroundColor: Colors.dark.background },
+  loadingContainer: { flex: 1, backgroundColor: Colors.dark.background, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { color: Colors.dark.text, marginTop: 16, fontSize: 16 },
+  gradient: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 20, paddingTop: 60 },
   logoContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+    width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center', alignItems: 'center', marginRight: 16
   },
-  appName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.dark.text,
-  },
-  heroContainer: {
-    height: 400,
-    width: '100%',
-    position: 'relative',
-  },
-  heroImage: {
-    width: '100%',
-    height: '100%',
-  },
-  imageOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 100,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'flex-end',
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.dark.text,
-    marginBottom: 16,
-    marginTop: -48, // Move title further up
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.dark.subtext,
-    marginBottom: 8, // Reduce space below subtitle even more
-    lineHeight: 24,
-  },
-  buttonContainer: {
-    gap: 0, // No space between buttons
-    marginBottom: 32, // Move button group lower
-    paddingTop: 16, // Add space above buttons to move them down
-  },
-  button: {
-    width: '100%',
-  },
+  appName: { fontSize: 24, fontWeight: 'bold', color: Colors.dark.text },
+  heroContainer: { height: 400, width: '100%', position: 'relative' },
+  heroImage: { width: '100%', height: '100%' },
+  imageOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 100 },
+  title: { fontSize: 32, fontWeight: 'bold', color: Colors.dark.text, marginBottom: 16, marginTop: -48 },
+  subtitle: { fontSize: 16, color: Colors.dark.subtext, marginBottom: 8, lineHeight: 24 },
+  buttonContainer: { marginBottom: 32, paddingTop: 16 },
+  button: { width: '100%' },
   googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginBottom: 0, // No space below Google button
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    alignSelf: 'center',
-    minWidth: 220,
-    maxWidth: 320,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 24,
+    paddingVertical: 8, paddingHorizontal: 16, shadowColor: '#000', shadowOpacity: 0.05,
+    shadowRadius: 2, elevation: 2, alignSelf: 'center', minWidth: 220, maxWidth: 320,
   },
-  googleLogo: {
-    width: 24,
-    height: 24,
-    marginRight: 12,
-  },
-  googleButtonText: {
-    color: '#222',
-    fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  loginRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  loginText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  loginLink: {
-    color: '#1976D2', // blue
-    fontSize: 16,
-    fontWeight: '500',
-  },
+  googleLogo: { width: 24, height: 24, marginRight: 12 },
+  googleButtonText: { color: '#222', fontSize: 16, fontWeight: '500', textAlign: 'center' },
+  loginRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 12 },
+  loginText: { color: '#fff', fontSize: 16 },
+  loginLink: { color: '#1976D2', fontSize: 16, fontWeight: '500' },
 });

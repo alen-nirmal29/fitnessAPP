@@ -1,54 +1,124 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Image as RNImage } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Image as RNImage,
+  ActivityIndicator,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
-import { ArrowLeft, Mail, Lock } from 'lucide-react-native';
+import { Mail, Lock } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import { useAuthStore } from '@/store/auth-store';
-import BackButton from '@/components/BackButton';
+
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+import { apiKey } from '@/firebase';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const clientId = '876432031351-h5hmbv4qj96aci5ngcrfqa4kdvef24s2.apps.googleusercontent.com';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  
-  const { login, loginWithGoogle, isLoading, error, isAuthenticated } = useAuthStore();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setErrorState] = useState<string | null>(null);
+
+  const { login, isAuthenticated, isInitialized, user } = useAuthStore();
+
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId,
+    redirectUri: makeRedirectUri({ 
+      scheme: 'com.rork.fitshape',
+      useProxy: false,
+    }),
+  });
+
+  // Handle Google OAuth response
+  useEffect(() => {
+    if (response?.type === 'success' && response.params.id_token) {
+      (async () => {
+        setIsLoading(true);
+        setErrorState(null);
+        try {
+          const redirectUri = makeRedirectUri({ scheme: 'com.rork.fitshape',useProxy: false });
+          const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${apiKey}`;
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              postBody: `id_token=${response.params.id_token}&providerId=google.com`,
+              requestUri: redirectUri,
+              returnIdpCredential: true,
+              returnSecureToken: true,
+            }),
+          });
+
+          const data = await res.json();
+          if (data.error) throw new Error(data.error.message);
+
+          // Store user data in Zustand
+          useAuthStore.getState().setUser(data);
+
+          setIsLoading(false);
+          router.replace('/(tabs)'); // Redirect after login
+        } catch (e: any) {
+          setErrorState(e.message || 'Google sign-in failed');
+          setIsLoading(false);
+        }
+      })();
+    }
+  }, [response]);
+
+  // Redirect logged in users away from login screen
+  useEffect(() => {
+    if (isInitialized && isAuthenticated && user) {
+      router.replace('/(tabs)');
+    }
+  }, [isInitialized, isAuthenticated, user]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
-    
+
     if (!email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Email is invalid';
     }
-    
+
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleLogin = async () => {
-    if (validateForm()) {
-      try {
-        await login(email, password);
-        // Force navigation to main app after successful login
-        router.replace('/(tabs)');
-      } catch (error) {
-        console.error('Login failed:', error);
-      }
-    }
-  };
+    if (!validateForm()) return;
 
-  const handleBack = () => {
-    router.replace('/');
+    setIsLoading(true);
+    setErrorState(null);
+    try {
+      await login(email, password);
+      router.replace('/(tabs)');
+    } catch (e: any) {
+      setErrorState(e.message || 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSignup = () => {
@@ -56,16 +126,11 @@ export default function LoginScreen() {
   };
 
   const handleGoogleLogin = async () => {
-    console.log('Google login button pressed');
+    setErrorState(null);
     try {
-      await loginWithGoogle();
-      // Only navigate if authenticated
-      if (useAuthStore.getState().isAuthenticated) {
-        router.replace('/(tabs)');
-      }
+      await promptAsync({ useProxy: false });
     } catch (e) {
-      // Error is handled in the store
-      console.log('Google login error', e);
+      setErrorState('Google login error');
     }
   };
 
@@ -76,9 +141,8 @@ export default function LoginScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
       <StatusBar style="light" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          {/* Removed BackButton to prevent navigating back from Welcome Back screen */}
           <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>Sign in to continue your fitness journey</Text>
         </View>
@@ -103,35 +167,36 @@ export default function LoginScreen() {
             error={errors.password}
             leftIcon={<Lock size={20} color={Colors.dark.subtext} />}
           />
-          <TouchableOpacity onPress={() => {}} style={styles.forgotPasswordRow}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
+
           {error && <Text style={styles.errorText}>{error}</Text>}
+
           <Button
             title="Login"
             onPress={handleLogin}
             variant="primary"
-            size="xlarge"
-            style={[styles.button, {minHeight: 48, marginTop: 16, marginBottom: 16}]}
+            size="large"
+            style={styles.button}
             isLoading={isLoading}
           />
+
           <View style={styles.dividerRow}>
             <View style={styles.divider} />
             <Text style={styles.orText}>or</Text>
             <View style={styles.divider} />
           </View>
-          <TouchableOpacity style={styles.googleButtonDark} onPress={handleGoogleLogin} disabled={isLoading}>
+
+          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin} disabled={isLoading}>
             <RNImage
               source={require('../../assets/images/google-logo.png')}
               style={styles.googleLogo}
               resizeMode="contain"
             />
-            <Text style={styles.googleButtonTextDark}>{isLoading ? 'Signing in...' : 'Sign in with Google'}</Text>
+            <Text style={styles.googleButtonText}>{isLoading ? 'Signing in...' : 'Sign in with Google'}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account?</Text>
+          <Text style={styles.footerText}>Don't have an account? </Text>
           <TouchableOpacity onPress={handleSignup}>
             <Text style={styles.footerLink}>Sign Up</Text>
           </TouchableOpacity>
@@ -149,13 +214,12 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 24,
+    justifyContent: 'center',
   },
   header: {
     marginTop: 60,
     marginBottom: 40,
-  },
-  backButton: {
-    marginBottom: 24,
+    alignItems: 'center',
   },
   title: {
     fontSize: 32,
@@ -176,20 +240,23 @@ const styles = StyleSheet.create({
   errorText: {
     color: Colors.dark.error,
     marginTop: 8,
+    textAlign: 'center',
   },
-  footer: {
+  dividerRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 'auto',
-    paddingVertical: 24,
+    alignItems: 'center',
+    marginVertical: 20,
   },
-  footerText: {
-    color: Colors.dark.subtext,
-    marginRight: 4,
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#333',
+    marginHorizontal: 8,
   },
-  footerLink: {
-    color: Colors.dark.accent,
-    fontWeight: 'bold',
+  orText: {
+    color: '#888',
+    fontSize: 16,
+    fontWeight: '500',
   },
   googleButton: {
     flexDirection: 'row',
@@ -198,8 +265,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingVertical: 8,
     paddingHorizontal: 16,
-    marginBottom: 0,
-    marginTop: 0,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -219,48 +284,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
   },
-  forgotPasswordRow: {
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: 8,
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 16,
   },
-  forgotPasswordText: {
+  footerText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  footerLink: {
     color: '#1976D2',
     fontSize: 16,
     fontWeight: '500',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 12,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#333',
-    marginHorizontal: 8,
-  },
-  orText: {
-    color: '#888',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  googleButtonDark: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#222',
-    borderRadius: 24,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginTop: 0,
-    alignSelf: 'center',
-    minWidth: 220,
-    maxWidth: 320,
-  },
-  googleButtonTextDark: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center',
   },
 });

@@ -1,41 +1,67 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import React, { useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
-import { ArrowLeft, Mail, Lock, User } from 'lucide-react-native';
+import { User, Mail, Lock } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import { useAuthStore } from '@/store/auth-store';
-import BackButton from '@/components/BackButton';
+import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
 
 export default function SignupScreen() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
-  
-  const { signup, loginWithGoogle, isLoading, error, isAuthenticated } = useAuthStore();
+  const [name, setName] = React.useState('');
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [errors, setErrors] = React.useState<{ name?: string; email?: string; password?: string }>({});
+
+  const { signup, loginWithGoogle, isLoading, error } = useAuthStore();
+
+  // Google OAuth request (no proxy)
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId: '876432031351-h5hmbv4qj96aci5ngcrfqa4kdvef24s2.apps.googleusercontent.com',
+    redirectUri: makeRedirectUri({
+      scheme: 'com.rork.fitshape',
+      useProxy: false, // No Expo proxy
+    }),
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success' && response.params.id_token) {
+      loginWithGoogle(response.params.id_token).then(() => {
+        if (useAuthStore.getState().isAuthenticated) {
+          router.replace('/onboarding/profile');
+        }
+      });
+    }
+  }, [response]);
 
   const validateForm = () => {
     const newErrors: { name?: string; email?: string; password?: string } = {};
-    
+
     if (!name) {
       newErrors.name = 'Name is required';
     }
-    
     if (!email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Email is invalid';
     }
-    
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -44,35 +70,19 @@ export default function SignupScreen() {
     if (validateForm()) {
       try {
         await signup(email, password, name);
-        // Force navigation to onboarding after successful signup
         router.replace('/onboarding/profile');
       } catch (error) {
         console.error('Signup failed:', error);
-        // Error is already handled in the store
       }
     }
   };
 
-  const handleBack = () => {
-    router.replace('/');
+  const handleGoogleSignup = () => {
+    promptAsync({ useProxy: false }); // match redirectUri
   };
 
   const handleLogin = () => {
     router.push('/auth/login');
-  };
-
-  const handleGoogleSignup = async () => {
-    console.log('Google signup button pressed');
-    try {
-      await loginWithGoogle();
-      // Only navigate if authenticated
-      if (useAuthStore.getState().isAuthenticated) {
-        router.replace('/onboarding/profile');
-      }
-    } catch (e) {
-      // Error is handled in the store
-      console.log('Google signup error', e);
-    }
   };
 
   return (
@@ -97,7 +107,7 @@ export default function SignupScreen() {
             error={errors.name}
             leftIcon={<User size={20} color={Colors.dark.subtext} />}
           />
-          
+
           <Input
             label="Email"
             placeholder="Enter your email"
@@ -108,7 +118,7 @@ export default function SignupScreen() {
             error={errors.email}
             leftIcon={<Mail size={20} color={Colors.dark.subtext} />}
           />
-          
+
           <Input
             label="Password"
             placeholder="Create a password"
@@ -118,9 +128,9 @@ export default function SignupScreen() {
             error={errors.password}
             leftIcon={<Lock size={20} color={Colors.dark.subtext} />}
           />
-          
+
           {error && <Text style={styles.errorText}>{error}</Text>}
-          
+
           <Button
             title="Create Account"
             onPress={handleSignup}
@@ -137,7 +147,12 @@ export default function SignupScreen() {
             <Text style={styles.footerLink}>Sign In</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.googleButtonDark} onPress={handleGoogleSignup} disabled={isLoading}>
+
+        <TouchableOpacity
+          style={styles.googleButtonDark}
+          onPress={handleGoogleSignup}
+          disabled={isLoading || !request}
+        >
           <Text style={styles.googleButtonTextDark}>{isLoading ? 'Signing up...' : 'Sign up with Google'}</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -157,9 +172,6 @@ const styles = StyleSheet.create({
   header: {
     marginTop: 60,
     marginBottom: 40,
-  },
-  backButton: {
-    marginBottom: 24,
   },
   title: {
     fontSize: 32,

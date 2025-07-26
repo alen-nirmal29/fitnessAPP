@@ -10,7 +10,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { Gender } from '@/types/user';
 
 export default function ProfileScreen() {
-  const { updateProfile, user, setInOnboarding } = useAuthStore();
+  const { updateProfile, setInOnboarding } = useAuthStore();
   
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
@@ -18,11 +18,10 @@ export default function ProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ height?: string; weight?: string; gender?: string }>({});
 
-  // Set onboarding flag when component mounts
+  // Set onboarding flag when component mounts to prevent premature redirects
   useEffect(() => {
-    console.log('Profile screen mounted, setting onboarding flag');
     setInOnboarding(true);
-  }, [setInOnboarding]);
+  }, []); // Changed: Empty dependency array is idiomatic for run-once effects
 
   const validateForm = () => {
     const newErrors: { height?: string; weight?: string; gender?: string } = {};
@@ -48,10 +47,6 @@ export default function ProfileScreen() {
   };
 
   const handleNext = async () => {
-    console.log('Profile handleNext called');
-    console.log('Current user:', user);
-    console.log('Form data:', { height, weight, gender });
-    
     if (!validateForm()) {
       console.log('Form validation failed');
       return;
@@ -60,24 +55,20 @@ export default function ProfileScreen() {
     setIsLoading(true);
     
     try {
-      // Set onboarding flag to prevent redirects
-      setInOnboarding(true);
-      
-      console.log('Updating profile...');
-      
-      // Update profile with the new data
-      updateProfile({
+      // CRITICAL FIX: Added 'await' to ensure the async operation completes
+      await updateProfile({
         height: Number(height),
         weight: Number(weight),
         gender: gender as Gender,
       });
       
-      console.log('Profile updated, navigating to goals page...');
+      console.log('Profile updated successfully, navigating to goals page...');
       
-      // Navigate to goals page using replace to prevent navigation stack issues
+      // This now runs only AFTER the profile is saved
       router.replace('/onboarding/goals');
       
     } catch (error) {
+      // This will now correctly catch any errors from the updateProfile function
       console.error('Error updating profile:', error);
       Alert.alert('Error', 'Failed to save profile information. Please try again.');
     } finally {

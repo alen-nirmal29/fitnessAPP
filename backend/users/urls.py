@@ -8,6 +8,7 @@ urlpatterns = [
     # Authentication
     path('register/', views.UserRegistrationView.as_view(), name='register'),
     path('login/', views.UserLoginView.as_view(), name='login'),
+    path('google-login/', views.google_login, name='google_login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
     # Profile management

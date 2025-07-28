@@ -24,7 +24,7 @@ export default function SignupScreen() {
   const [password, setPassword] = React.useState('');
   const [errors, setErrors] = React.useState<{ name?: string; email?: string; password?: string }>({});
 
-  const { signup, loginWithGoogle, isLoading, error } = useAuthStore();
+  const { signup, loginWithGoogle, isLoading, error, isAuthenticated, user } = useAuthStore();
 
   // Google OAuth request (no proxy)
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
@@ -37,13 +37,26 @@ export default function SignupScreen() {
 
   useEffect(() => {
     if (response?.type === 'success' && response.params.id_token) {
-      loginWithGoogle(response.params.id_token).then(() => {
-        if (useAuthStore.getState().isAuthenticated) {
-          router.replace('/onboarding/profile');
-        }
-      });
+      handleGoogleSignup(response.params.id_token);
     }
   }, [response]);
+
+  useEffect(() => {
+    // Navigate to onboarding if user is authenticated and hasn't completed onboarding
+    if (isAuthenticated && user && !user.has_completed_onboarding) {
+      router.replace('/onboarding/profile');
+    } else if (isAuthenticated && user && user.has_completed_onboarding) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, user]);
+
+  const handleGoogleSignup = async (idToken: string) => {
+    try {
+      await loginWithGoogle(idToken);
+    } catch (error) {
+      console.error('Google signup failed:', error);
+    }
+  };
 
   const validateForm = () => {
     const newErrors: { name?: string; email?: string; password?: string } = {};
@@ -70,14 +83,13 @@ export default function SignupScreen() {
     if (validateForm()) {
       try {
         await signup(email, password, name);
-        router.replace('/onboarding/profile');
       } catch (error) {
         console.error('Signup failed:', error);
       }
     }
   };
 
-  const handleGoogleSignup = () => {
+  const handleGoogleSignupPress = () => {
     promptAsync({ useProxy: false }); // match redirectUri
   };
 
@@ -150,7 +162,7 @@ export default function SignupScreen() {
 
         <TouchableOpacity
           style={styles.googleButtonDark}
-          onPress={handleGoogleSignup}
+          onPress={handleGoogleSignupPress}
           disabled={isLoading || !request}
         >
           <Text style={styles.googleButtonTextDark}>{isLoading ? 'Signing up...' : 'Sign up with Google'}</Text>

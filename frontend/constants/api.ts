@@ -7,6 +7,7 @@ export const API_BASE_URL = 'http://localhost:8000/api';
 export const AUTH_ENDPOINTS = {
   REGISTER: `${API_BASE_URL}/auth/register/`,
   LOGIN: `${API_BASE_URL}/auth/login/`,
+  GOOGLE_LOGIN: `${API_BASE_URL}/auth/google-login/`,
   TOKEN_REFRESH: `${API_BASE_URL}/auth/token/refresh/`,
   PROFILE: `${API_BASE_URL}/auth/profile/`,
   PROFILE_UPDATE: `${API_BASE_URL}/auth/profile/update/`,

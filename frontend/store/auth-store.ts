@@ -2,21 +2,24 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthState, UserProfile } from '@/types/user';
-import { AUTH_ENDPOINTS, getAuthHeaders } from '@/constants/api';
+import { authAPI } from '@/services/api';
 
 interface AuthStore extends AuthState {
   isInitialized: boolean;
   isInOnboarding: boolean;
-  idToken?: string;
+  accessToken?: string;
   refreshToken?: string;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   completeOnboarding: () => void;
   initialize: () => void;
   setInOnboarding: (inOnboarding: boolean) => void;
-  setUser: (user: UserProfile, idToken?: string, refreshToken?: string) => void;
+  setUser: (user: UserProfile, accessToken?: string, refreshToken?: string) => void;
+  getAccessToken: () => Promise<string | null>;
+  setTokens: (accessToken: string, refreshToken: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -28,74 +31,88 @@ export const useAuthStore = create<AuthStore>()(
       isInOnboarding: false,
       user: null,
       error: null,
-      idToken: undefined,
+      accessToken: undefined,
       refreshToken: undefined,
 
       initialize: () => {
         set({ isInitialized: true });
       },
 
-      setUser: (user, idToken, refreshToken) => {
+      setUser: (user, accessToken, refreshToken) => {
         set({
           isAuthenticated: true,
           user,
-          idToken,
+          accessToken,
           refreshToken,
           isLoading: false,
         });
       },
 
+      getAccessToken: async () => {
+        const token = await AsyncStorage.getItem('accessToken');
+        return token;
+      },
+
+      setTokens: async (accessToken: string, refreshToken: string) => {
+        await AsyncStorage.setItem('accessToken', accessToken);
+        await AsyncStorage.setItem('refreshToken', refreshToken);
+        set({ accessToken, refreshToken });
+      },
+
       login: async (email, password) => {
         set({ isLoading: true, error: null });
         try {
-          const res = await fetch(AUTH_ENDPOINTS.LOGIN, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.detail || data.error || 'Login failed');
+          const data = await authAPI.login({ email, password });
 
-          // Store tokens
-          await AsyncStorage.setItem('accessToken', data.tokens.access);
-          await AsyncStorage.setItem('refreshToken', data.tokens.refresh);
-
+          // Store tokens in both state and AsyncStorage
+          await get().setTokens(data.tokens.access, data.tokens.refresh);
           get().setUser(data.user, data.tokens.access, data.tokens.refresh);
         } catch (error: any) {
           set({
             error: error.message || 'Invalid email or password',
             isLoading: false,
           });
+          throw error;
         }
       },
 
       signup: async (email, password, name) => {
         set({ isLoading: true, error: null });
         try {
-          const res = await fetch(AUTH_ENDPOINTS.REGISTER, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              email, 
-              password, 
-              username: email, 
-              first_name: name,
-              last_name: ''
-            }),
+          const data = await authAPI.register({ 
+            email, 
+            password, 
+            username: email, 
+            first_name: name,
+            last_name: ''
           });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.detail || data.error || 'Registration failed');
 
-          // Store tokens
-          await AsyncStorage.setItem('accessToken', data.tokens.access);
-          await AsyncStorage.setItem('refreshToken', data.tokens.refresh);
-
+          // Store tokens in both state and AsyncStorage
+          await get().setTokens(data.tokens.access, data.tokens.refresh);
           get().setUser(data.user, data.tokens.access, data.tokens.refresh);
         } catch (error: any) {
           set({
             error: error.message || 'Failed to create account',
             isLoading: false,
           });
+          throw error;
+        }
+      },
+
+      loginWithGoogle: async (idToken) => {
+        set({ isLoading: true, error: null });
+        try {
+          const data = await authAPI.googleLogin(idToken);
+
+          // Store tokens in both state and AsyncStorage
+          await get().setTokens(data.tokens.access, data.tokens.refresh);
+          get().setUser(data.user, data.tokens.access, data.tokens.refresh);
+        } catch (error: any) {
+          set({
+            error: error.message || 'Google login failed',
+            isLoading: false,
+          });
+          throw error;
         }
       },
 
@@ -114,7 +131,7 @@ export const useAuthStore = create<AuthStore>()(
             isLoading: false,
             isInitialized: true,
             isInOnboarding: false,
-            idToken: undefined,
+            accessToken: undefined,
             refreshToken: undefined,
           });
         }
@@ -123,24 +140,11 @@ export const useAuthStore = create<AuthStore>()(
       updateProfile: async (profile) => {
         const { user } = get();
         if (!user || !user.id) {
-          console.error('Cannot update profile: user or user.id is undefined');
           throw new Error('User not authenticated');
         }
 
         try {
-          const headers = await getAuthHeaders();
-          const res = await fetch(AUTH_ENDPOINTS.PROFILE_UPDATE, {
-            method: 'PUT',
-            headers,
-            body: JSON.stringify(profile),
-          });
-          
-          if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.detail || 'Failed to update profile');
-          }
-
-          const updatedUser = await res.json();
+          const updatedUser = await authAPI.updateProfile(profile);
           set({ user: updatedUser });
         } catch (error: any) {
           console.error('Profile update error:', error);
@@ -152,16 +156,9 @@ export const useAuthStore = create<AuthStore>()(
         const { user } = get();
         if (user) {
           try {
-            const headers = await getAuthHeaders();
-            const res = await fetch(AUTH_ENDPOINTS.ONBOARDING_COMPLETE, {
-              method: 'POST',
-              headers,
-            });
-            
-            if (res.ok) {
-              const updatedUser = { ...user, hasCompletedOnboarding: true };
-              set({ user: updatedUser, isInOnboarding: false });
-            }
+            await authAPI.completeOnboarding();
+            const updatedUser = { ...user, hasCompletedOnboarding: true };
+            set({ user: updatedUser, isInOnboarding: false });
           } catch (error) {
             console.error('Error completing onboarding:', error);
           }
@@ -178,7 +175,6 @@ export const useAuthStore = create<AuthStore>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.initialize();
-          console.log('Auth state rehydrated:', state);
         }
       },
     }

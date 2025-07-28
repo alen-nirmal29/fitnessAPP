@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Exercise } from '@/types/workout';
+import { WORKOUT_ENDPOINTS, getAuthHeaders } from '@/constants/api';
 
 export type WorkoutSessionState = 'idle' | 'active' | 'resting' | 'completed';
 
@@ -172,7 +173,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
         });
       },
       
-      completeWorkout: () => {
+      completeWorkout: async () => {
         const { currentSession, completedWorkouts } = get();
         if (!currentSession) return;
         
@@ -188,6 +189,33 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
           totalExercises: currentSession.exercises.length,
           caloriesBurned: Math.round(duration * 8), // Rough estimate
         };
+        
+        // Save workout session to Django API
+        try {
+          const headers = await getAuthHeaders();
+          const sessionData = {
+            workout_name: currentSession.workoutName,
+            start_time: currentSession.startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            duration_minutes: duration,
+            exercises_completed: currentSession.completedExercises.length,
+            total_exercises: currentSession.exercises.length,
+            calories_burned: Math.round(duration * 8),
+            state: 'completed',
+          };
+          
+          const response = await fetch(WORKOUT_ENDPOINTS.SESSIONS, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(sessionData),
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to save workout session to API');
+          }
+        } catch (error) {
+          console.error('Error saving workout session:', error);
+        }
         
         set({
           currentSession: {

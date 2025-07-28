@@ -2,9 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthState, UserProfile } from '@/types/user';
-import { db } from '@/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { apiKey } from '@/firebase';
+import { AUTH_ENDPOINTS, getAuthHeaders } from '@/constants/api';
 
 interface AuthStore extends AuthState {
   isInitialized: boolean;
@@ -50,30 +48,19 @@ export const useAuthStore = create<AuthStore>()(
       login: async (email, password) => {
         set({ isLoading: true, error: null });
         try {
-          const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
-          const res = await fetch(url, {
+          const res = await fetch(AUTH_ENDPOINTS.LOGIN, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, returnSecureToken: true }),
+            body: JSON.stringify({ email, password }),
           });
           const data = await res.json();
-          if (data.error) throw new Error(data.error.message);
+          if (!res.ok) throw new Error(data.detail || data.error || 'Login failed');
 
-          const userDoc = await getDoc(doc(db, 'users', data.localId));
-          let userProfile: UserProfile;
-          if (userDoc.exists()) {
-            userProfile = userDoc.data() as UserProfile;
-          } else {
-            userProfile = {
-              id: data.localId,
-              email: data.email,
-              name: '',
-              hasCompletedOnboarding: false,
-            };
-            await setDoc(doc(db, 'users', data.localId), userProfile);
-          }
+          // Store tokens
+          await AsyncStorage.setItem('accessToken', data.tokens.access);
+          await AsyncStorage.setItem('refreshToken', data.tokens.refresh);
 
-          get().setUser(userProfile, data.idToken, data.refreshToken);
+          get().setUser(data.user, data.tokens.access, data.tokens.refresh);
         } catch (error: any) {
           set({
             error: error.message || 'Invalid email or password',
@@ -85,24 +72,25 @@ export const useAuthStore = create<AuthStore>()(
       signup: async (email, password, name) => {
         set({ isLoading: true, error: null });
         try {
-          const url = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`;
-          const res = await fetch(url, {
+          const res = await fetch(AUTH_ENDPOINTS.REGISTER, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, returnSecureToken: true }),
+            body: JSON.stringify({ 
+              email, 
+              password, 
+              username: email, 
+              first_name: name,
+              last_name: ''
+            }),
           });
           const data = await res.json();
-          if (data.error) throw new Error(data.error.message);
+          if (!res.ok) throw new Error(data.detail || data.error || 'Registration failed');
 
-          const userProfile: UserProfile = {
-            id: data.localId,
-            email: data.email,
-            name,
-            hasCompletedOnboarding: false,
-          };
-          await setDoc(doc(db, 'users', data.localId), userProfile);
+          // Store tokens
+          await AsyncStorage.setItem('accessToken', data.tokens.access);
+          await AsyncStorage.setItem('refreshToken', data.tokens.refresh);
 
-          get().setUser(userProfile, data.idToken, data.refreshToken);
+          get().setUser(data.user, data.tokens.access, data.tokens.refresh);
         } catch (error: any) {
           set({
             error: error.message || 'Failed to create account',
@@ -114,7 +102,10 @@ export const useAuthStore = create<AuthStore>()(
       logout: async () => {
         set({ isLoading: true });
         try {
+          // Clear all auth data
           await AsyncStorage.removeItem('auth-storage');
+          await AsyncStorage.removeItem('accessToken');
+          await AsyncStorage.removeItem('refreshToken');
         } finally {
           set({
             isAuthenticated: false,
@@ -136,22 +127,44 @@ export const useAuthStore = create<AuthStore>()(
           throw new Error('User not authenticated');
         }
 
-        const updatedUser = {
-          ...user,
-          ...profile,
-          hasCompletedOnboarding: true,
-        };
+        try {
+          const headers = await getAuthHeaders();
+          const res = await fetch(AUTH_ENDPOINTS.PROFILE_UPDATE, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify(profile),
+          });
+          
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.detail || 'Failed to update profile');
+          }
 
-        await setDoc(doc(db, 'users', user.id), updatedUser);
-        set({ user: updatedUser });
+          const updatedUser = await res.json();
+          set({ user: updatedUser });
+        } catch (error: any) {
+          console.error('Profile update error:', error);
+          throw error;
+        }
       },
 
-      completeOnboarding: () => {
+      completeOnboarding: async () => {
         const { user } = get();
         if (user) {
-          const updatedUser = { ...user, hasCompletedOnboarding: true };
-          set({ user: updatedUser, isInOnboarding: false });
-          setDoc(doc(db, 'users', user.id), updatedUser, { merge: true });
+          try {
+            const headers = await getAuthHeaders();
+            const res = await fetch(AUTH_ENDPOINTS.ONBOARDING_COMPLETE, {
+              method: 'POST',
+              headers,
+            });
+            
+            if (res.ok) {
+              const updatedUser = { ...user, hasCompletedOnboarding: true };
+              set({ user: updatedUser, isInOnboarding: false });
+            }
+          } catch (error) {
+            console.error('Error completing onboarding:', error);
+          }
         }
       },
 

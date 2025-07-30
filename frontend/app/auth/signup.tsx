@@ -43,10 +43,21 @@ export default function SignupScreen() {
 
   useEffect(() => {
     // Navigate to onboarding if user is authenticated and hasn't completed onboarding
-    if (isAuthenticated && user && !user.hasCompletedOnboarding) {
-      router.replace('/onboarding/profile');
-    } else if (isAuthenticated && user && user.hasCompletedOnboarding) {
-      router.replace('/(tabs)');
+    if (isAuthenticated && user) {
+      console.log('User authenticated after signup:', user);
+      console.log('hasCompletedOnboarding:', user.hasCompletedOnboarding);
+      
+      // Check authentication state
+      const authState = useAuthStore.getState().checkAuthState();
+      console.log('Current auth state after signup:', authState);
+      
+      if (!user.hasCompletedOnboarding) {
+        console.log('User has not completed onboarding, redirecting to onboarding');
+        router.replace('/onboarding/profile');
+      } else {
+        console.log('User has completed onboarding, redirecting to main app');
+        router.replace('/(tabs)');
+      }
     }
   }, [isAuthenticated, user]);
 

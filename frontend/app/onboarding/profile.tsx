@@ -55,12 +55,20 @@ export default function ProfileScreen() {
     setIsLoading(true);
     
     try {
-      // CRITICAL FIX: Added 'await' to ensure the async operation completes
+      // Save profile data to database directly
       await updateProfile({
         height: Number(height),
         weight: Number(weight),
         gender: gender as Gender,
       });
+      
+      // Also save to database for persistence
+      const { saveUserData } = useAuthStore.getState();
+      await saveUserData({
+        height: Number(height),
+        weight: Number(weight),
+        gender: gender as Gender,
+      }, 'profile');
       
       console.log('Profile updated successfully, navigating to goals page...');
       

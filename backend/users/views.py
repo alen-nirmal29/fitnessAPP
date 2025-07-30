@@ -35,8 +35,13 @@ class UserRegistrationView(generics.CreateAPIView):
         # Generate tokens
         refresh = RefreshToken.for_user(user)
         
+        # Get user data with serializer
+        user_data = UserSerializer(user).data
+        logger.info(f"User data being sent to frontend: {user_data}")
+        logger.info(f"hasCompletedOnboarding value: {user_data.get('hasCompletedOnboarding')}")
+        
         response_data = {
-            'user': UserSerializer(user).data,
+            'user': user_data,
             'tokens': {
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
@@ -45,6 +50,7 @@ class UserRegistrationView(generics.CreateAPIView):
         }
         
         logger.info(f"Registration successful for user: {user.email}")
+        logger.info(f"Full response data: {response_data}")
         return Response(response_data, status=status.HTTP_201_CREATED)
 
     def get(self, request, *args, **kwargs):
@@ -81,8 +87,13 @@ class UserLoginView(generics.GenericAPIView):
         
         refresh = RefreshToken.for_user(user)
         
+        # Get user data with serializer
+        user_data = UserSerializer(user).data
+        logger.info(f"User data being sent to frontend: {user_data}")
+        logger.info(f"hasCompletedOnboarding value: {user_data.get('hasCompletedOnboarding')}")
+        
         response_data = {
-            'user': UserSerializer(user).data,
+            'user': user_data,
             'tokens': {
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
@@ -91,6 +102,7 @@ class UserLoginView(generics.GenericAPIView):
         }
         
         logger.info(f"Login successful for user: {user.email}")
+        logger.info(f"Full response data: {response_data}")
         return Response(response_data)
 
     def get(self, request):
@@ -112,6 +124,37 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     
     def get_object(self):
         return self.request.user
+    
+    def get(self, request, *args, **kwargs):
+        """GET method to retrieve user profile"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"Profile GET request from user: {request.user}")
+        logger.info(f"Request headers: {dict(request.headers)}")
+        logger.info(f"User authenticated: {request.user.is_authenticated}")
+        
+        user = self.get_object()
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+    
+    def put(self, request, *args, **kwargs):
+        """PUT method to update user profile"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"Profile PUT request from user: {request.user}")
+        logger.info(f"Request data: {request.data}")
+        
+        user = self.get_object()
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(serializer.data)
+    
+    def patch(self, request, *args, **kwargs):
+        """PATCH method to partially update user profile"""
+        return self.put(request, *args, **kwargs)
 
 class UserProfileUpdateView(generics.UpdateAPIView):
     """Update user profile during onboarding"""
@@ -122,12 +165,38 @@ class UserProfileUpdateView(generics.UpdateAPIView):
         return self.request.user
     
     def update(self, request, *args, **kwargs):
+        import logging
+        logger = logging.getLogger(__name__)
+        
         user = self.get_object()
-        serializer = self.get_serializer(user, data=request.data, partial=True)
+        logger.info(f"Updating profile for user: {user.email}")
+        logger.info(f"Request data: {request.data}")
+        
+        # Handle field mapping from frontend to backend
+        update_data = {}
+        field_mapping = {
+            'height': 'height',
+            'weight': 'weight',
+            'gender': 'gender',
+            'age': 'age',
+            'fitness_level': 'fitness_level',
+            'fitnessGoal': 'fitness_goal',
+            'specificGoal': 'specific_goal'
+        }
+        
+        for frontend_field, backend_field in field_mapping.items():
+            if frontend_field in request.data and request.data[frontend_field] is not None:
+                update_data[backend_field] = request.data[frontend_field]
+        
+        logger.info(f"Mapped update data: {update_data}")
+        
+        serializer = self.get_serializer(user, data=update_data, partial=True)
         serializer.is_valid(raise_exception=True)
         
-        # Update user profile
+        # Update user profile directly in database
         user = serializer.save()
+        
+        logger.info(f"Profile updated successfully for user: {user.email}")
         
         return Response({
             'user': UserSerializer(user).data,
@@ -141,23 +210,6 @@ class UserProfileUpdateView(generics.UpdateAPIView):
     def put(self, request, *args, **kwargs):
         """Handle PUT requests for full updates"""
         return self.update(request, *args, **kwargs)
-
-    def get(self, request, *args, **kwargs):
-        """GET method for debugging - shows profile update form data"""
-        return Response({
-            'message': 'Profile Update endpoint - GET method for debugging',
-            'method': 'GET',
-            'endpoint': 'User Profile Update',
-            'expected_data': {
-                'height': 'decimal',
-                'weight': 'decimal',
-                'gender': 'string (male/female/other)',
-                'age': 'integer',
-                'fitness_level': 'string',
-                'fitness_goal': 'string',
-                'specific_goal': 'string'
-            }
-        })
 
 @api_view(['GET', 'POST'])
 @permission_classes([permissions.AllowAny])  # Allow GET without auth for debugging
@@ -178,6 +230,9 @@ def update_onboarding_step(request):
     if not request.user.is_authenticated:
         return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
     
+    import logging
+    logger = logging.getLogger(__name__)
+    
     serializer = OnboardingStepSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     
@@ -185,44 +240,133 @@ def update_onboarding_step(request):
     data = serializer.validated_data['data']
     user = request.user
     
-    with transaction.atomic():
+    logger.info(f"Processing onboarding step '{step}' for user {user.email}")
+    logger.info(f"Step data: {data}")
+    
+    # Save data directly to database
+    try:
         if step == 'profile':
-            # Update basic profile
-            user.height = data.get('height')
-            user.weight = data.get('weight')
-            user.gender = data.get('gender')
+            # Update basic profile information
+            if 'height' in data and data['height'] is not None:
+                user.height = data['height']
+            if 'weight' in data and data['weight'] is not None:
+                user.weight = data['weight']
+            if 'gender' in data and data['gender'] is not None:
+                user.gender = data['gender']
+            if 'age' in data and data['age'] is not None:
+                user.age = data['age']
+            if 'fitness_level' in data and data['fitness_level'] is not None:
+                user.fitness_level = data['fitness_level']
             user.save()
+            logger.info(f"Profile data saved directly for user {user.email}")
             
         elif step == 'goals':
             # Update fitness goals
-            user.fitness_goal = data.get('fitness_goal')
+            if 'fitnessGoal' in data and data['fitnessGoal'] is not None:
+                user.fitness_goal = data['fitnessGoal']
+            if 'specificGoal' in data and data['specificGoal'] is not None:
+                user.specific_goal = data['specificGoal']
             user.save()
+            logger.info(f"Goals data saved directly for user {user.email}")
             
         elif step == 'body_composition':
-            # Create or update body composition
-            composition, created = BodyComposition.objects.get_or_create(user=user)
-            for field, value in data.items():
-                if hasattr(composition, field) and value is not None:
-                    setattr(composition, field, value)
-            composition.save()
+            # Update body composition data
+            body_comp, created = BodyComposition.objects.get_or_create(user=user)
+            field_mapping = {
+                'bodyFat': 'body_fat',
+                'muscleMass': 'muscle_mass',
+                'boneMass': 'bone_mass',
+                'waterWeight': 'water_weight',
+                'visceralFat': 'visceral_fat',
+                'proteinMass': 'protein_mass',
+                'muscleRate': 'muscle_rate',
+                'metabolicAge': 'metabolic_age',
+                'weightWithoutFat': 'weight_without_fat',
+                'bmi': 'bmi',
+                'bmr': 'bmr'
+            }
+            
+            updated_fields = []
+            for frontend_field, backend_field in field_mapping.items():
+                if frontend_field in data and data[frontend_field] is not None:
+                    setattr(body_comp, backend_field, data[frontend_field])
+                    updated_fields.append(backend_field)
+            
+            if updated_fields:
+                body_comp.save()
+                logger.info(f"Body composition data saved directly for user {user.email}. Updated fields: {updated_fields}")
+            else:
+                logger.info(f"No body composition data to update for user {user.email}")
             
         elif step == 'body_model':
-            # Create or update body measurements
+            # Update body measurements for 3D model
             measurements, created = BodyMeasurements.objects.get_or_create(user=user)
-            for field, value in data.items():
-                if hasattr(measurements, field) and value is not None:
-                    setattr(measurements, field, value)
-            measurements.save()
+            field_mapping = {
+                'leftarm': 'left_arm',
+                'rightarm': 'right_arm',
+                'leftthigh': 'left_thigh',
+                'rightthigh': 'right_thigh',
+                'chest': 'chest',
+                'neck': 'neck',
+                'waist': 'waist',
+                'shoulders': 'shoulders',
+                'hips': 'hips',
+                'calves': 'calves'
+            }
+            
+            updated_fields = []
+            for frontend_field, backend_field in field_mapping.items():
+                if frontend_field in data and data[frontend_field] is not None:
+                    setattr(measurements, backend_field, data[frontend_field])
+                    updated_fields.append(backend_field)
+            
+            if updated_fields:
+                measurements.save()
+                logger.info(f"Body measurements saved directly for user {user.email}. Updated fields: {updated_fields}")
+            else:
+                logger.info(f"No body measurements to update for user {user.email}")
             
         elif step == 'specific_goals':
-            # Update specific goal and complete onboarding
-            user.specific_goal = data.get('specific_goal')
-            user.has_completed_onboarding = True
-            user.save()
+            # Update specific goal measurements
+            goals, created = GoalMeasurements.objects.get_or_create(user=user)
+            field_mapping = {
+                'leftarm': 'left_arm',
+                'rightarm': 'right_arm',
+                'leftthigh': 'left_thigh',
+                'rightthigh': 'right_thigh',
+                'chest': 'chest',
+                'neck': 'neck',
+                'waist': 'waist',
+                'shoulders': 'shoulders',
+                'hips': 'hips',
+                'calves': 'calves',
+                'targetWeight': 'target_weight'
+            }
+            
+            updated_fields = []
+            for frontend_field, backend_field in field_mapping.items():
+                if frontend_field in data and data[frontend_field] is not None:
+                    setattr(goals, backend_field, data[frontend_field])
+                    updated_fields.append(backend_field)
+            
+            if updated_fields:
+                goals.save()
+                logger.info(f"Goal measurements saved directly for user {user.email}. Updated fields: {updated_fields}")
+            else:
+                logger.info(f"No goal measurements to update for user {user.email}")
+        
+        logger.info(f"Step '{step}' processed successfully for user {user.email}")
+        
+    except Exception as e:
+        logger.error(f"Error processing step '{step}' for user {user.email}: {str(e)}")
+        return Response({
+            'error': f'Error processing step: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     return Response({
-        'message': f'{step} step completed successfully',
-        'user': UserSerializer(user).data
+        'message': f'{step.replace("_", " ").title()} data processed successfully',
+        'step': step,
+        'status': 'completed'
     })
 
 @api_view(['GET', 'POST'])
@@ -235,17 +379,17 @@ def update_body_composition(request):
             'method': 'GET',
             'endpoint': 'Update Body Composition',
             'expected_data': {
-                'body_fat': 'decimal',
-                'muscle_mass': 'decimal',
-                'bone_mass': 'decimal',
-                'water_weight': 'decimal',
+                'bodyFat': 'decimal',
+                'muscleMass': 'decimal',
+                'boneMass': 'decimal',
+                'waterWeight': 'decimal',
                 'bmr': 'integer',
-                'visceral_fat': 'decimal',
-                'protein_mass': 'decimal',
+                'visceralFat': 'decimal',
+                'proteinMass': 'decimal',
                 'bmi': 'decimal',
-                'muscle_rate': 'decimal',
-                'metabolic_age': 'integer',
-                'weight_without_fat': 'decimal',
+                'muscleRate': 'decimal',
+                'metabolicAge': 'integer',
+                'weightWithoutFat': 'decimal',
                 'composition_image': 'file'
             }
         })
@@ -254,16 +398,46 @@ def update_body_composition(request):
     if not request.user.is_authenticated:
         return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
     
+    import logging
+    logger = logging.getLogger(__name__)
+    
     user = request.user
+    logger.info(f"Updating body composition for user {user.email}")
+    logger.info(f"Request data: {request.data}")
+    
     composition, created = BodyComposition.objects.get_or_create(user=user)
     
-    serializer = BodyCompositionSerializer(composition, data=request.data, partial=True)
-    serializer.is_valid(raise_exception=True)
-    composition = serializer.save()
+    # Map frontend field names to backend field names
+    field_mapping = {
+        'bodyFat': 'body_fat',
+        'muscleMass': 'muscle_mass',
+        'boneMass': 'bone_mass',
+        'waterWeight': 'water_weight',
+        'visceralFat': 'visceral_fat',
+        'proteinMass': 'protein_mass',
+        'muscleRate': 'muscle_rate',
+        'metabolicAge': 'metabolic_age',
+        'weightWithoutFat': 'weight_without_fat',
+        'bmi': 'bmi',
+        'bmr': 'bmr'
+    }
+    
+    updated_fields = []
+    for frontend_field, backend_field in field_mapping.items():
+        if frontend_field in request.data and request.data[frontend_field] is not None:
+            setattr(composition, backend_field, request.data[frontend_field])
+            updated_fields.append(backend_field)
+    
+    if updated_fields:
+        composition.save()
+        logger.info(f"Body composition saved for user {user.email}. Updated fields: {updated_fields}")
+    else:
+        logger.info(f"No body composition data to update for user {user.email}")
     
     return Response({
-        'body_composition': BodyCompositionSerializer(composition).data,
-        'message': 'Body composition updated successfully'
+        'bodyComposition': BodyCompositionSerializer(composition).data,
+        'message': 'Body composition updated successfully',
+        'updated_fields': updated_fields
     })
 
 @api_view(['GET', 'POST'])
@@ -279,10 +453,10 @@ def update_body_measurements(request):
                 'chest': 'decimal',
                 'neck': 'decimal',
                 'waist': 'decimal',
-                'left_arm': 'decimal',
-                'right_arm': 'decimal',
-                'left_thigh': 'decimal',
-                'right_thigh': 'decimal',
+                'leftarm': 'decimal',
+                'rightarm': 'decimal',
+                'leftthigh': 'decimal',
+                'rightthigh': 'decimal',
                 'shoulders': 'decimal',
                 'hips': 'decimal',
                 'calves': 'decimal'
@@ -293,16 +467,45 @@ def update_body_measurements(request):
     if not request.user.is_authenticated:
         return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
     
+    import logging
+    logger = logging.getLogger(__name__)
+    
     user = request.user
+    logger.info(f"Updating body measurements for user {user.email}")
+    logger.info(f"Request data: {request.data}")
+    
     measurements, created = BodyMeasurements.objects.get_or_create(user=user)
     
-    serializer = BodyMeasurementsSerializer(measurements, data=request.data, partial=True)
-    serializer.is_valid(raise_exception=True)
-    measurements = serializer.save()
+    # Map frontend field names to backend field names
+    field_mapping = {
+        'leftarm': 'left_arm',
+        'rightarm': 'right_arm',
+        'leftthigh': 'left_thigh',
+        'rightthigh': 'right_thigh',
+        'chest': 'chest',
+        'neck': 'neck',
+        'waist': 'waist',
+        'shoulders': 'shoulders',
+        'hips': 'hips',
+        'calves': 'calves'
+    }
+    
+    updated_fields = []
+    for frontend_field, backend_field in field_mapping.items():
+        if frontend_field in request.data and request.data[frontend_field] is not None:
+            setattr(measurements, backend_field, request.data[frontend_field])
+            updated_fields.append(backend_field)
+    
+    if updated_fields:
+        measurements.save()
+        logger.info(f"Body measurements saved for user {user.email}. Updated fields: {updated_fields}")
+    else:
+        logger.info(f"No body measurements to update for user {user.email}")
     
     return Response({
-        'measurements': BodyMeasurementsSerializer(measurements).data,
-        'message': 'Body measurements updated successfully'
+        'currentMeasurements': BodyMeasurementsSerializer(measurements).data,
+        'message': 'Body measurements updated successfully',
+        'updated_fields': updated_fields
     })
 
 @api_view(['GET', 'POST'])
@@ -318,14 +521,14 @@ def update_goal_measurements(request):
                 'chest': 'decimal',
                 'neck': 'decimal',
                 'waist': 'decimal',
-                'left_arm': 'decimal',
-                'right_arm': 'decimal',
-                'left_thigh': 'decimal',
-                'right_thigh': 'decimal',
+                'leftarm': 'decimal',
+                'rightarm': 'decimal',
+                'leftthigh': 'decimal',
+                'rightthigh': 'decimal',
                 'shoulders': 'decimal',
                 'hips': 'decimal',
                 'calves': 'decimal',
-                'target_weight': 'decimal'
+                'targetWeight': 'decimal'
             }
         })
     
@@ -333,16 +536,46 @@ def update_goal_measurements(request):
     if not request.user.is_authenticated:
         return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
     
+    import logging
+    logger = logging.getLogger(__name__)
+    
     user = request.user
+    logger.info(f"Updating goal measurements for user {user.email}")
+    logger.info(f"Request data: {request.data}")
+    
     goals, created = GoalMeasurements.objects.get_or_create(user=user)
     
-    serializer = GoalMeasurementsSerializer(goals, data=request.data, partial=True)
-    serializer.is_valid(raise_exception=True)
-    goals = serializer.save()
+    # Map frontend field names to backend field names
+    field_mapping = {
+        'leftarm': 'left_arm',
+        'rightarm': 'right_arm',
+        'leftthigh': 'left_thigh',
+        'rightthigh': 'right_thigh',
+        'chest': 'chest',
+        'neck': 'neck',
+        'waist': 'waist',
+        'shoulders': 'shoulders',
+        'hips': 'hips',
+        'calves': 'calves',
+        'targetWeight': 'target_weight'
+    }
+    
+    updated_fields = []
+    for frontend_field, backend_field in field_mapping.items():
+        if frontend_field in request.data and request.data[frontend_field] is not None:
+            setattr(goals, backend_field, request.data[frontend_field])
+            updated_fields.append(backend_field)
+    
+    if updated_fields:
+        goals.save()
+        logger.info(f"Goal measurements saved for user {user.email}. Updated fields: {updated_fields}")
+    else:
+        logger.info(f"No goal measurements to update for user {user.email}")
     
     return Response({
-        'goal_measurements': GoalMeasurementsSerializer(goals).data,
-        'message': 'Goal measurements updated successfully'
+        'goalMeasurements': GoalMeasurementsSerializer(goals).data,
+        'message': 'Goal measurements updated successfully',
+        'updated_fields': updated_fields
     })
 
 @api_view(['GET'])
@@ -378,23 +611,107 @@ def complete_onboarding(request):
         'user': UserSerializer(user).data
     })
 
-@api_view(['GET', 'POST'])
+
+
+@api_view(['GET'])
 @permission_classes([permissions.AllowAny])
-def test_connection(request):
-    """Test endpoint to verify frontend can reach backend"""
-    import logging
-    logger = logging.getLogger(__name__)
+def public_user_data(request):
+    """Public endpoint to view user data without authentication"""
+    from users.models import User, BodyComposition, BodyMeasurements, GoalMeasurements
     
-    logger.info(f"🔗 Test connection request received: {request.method}")
-    logger.info(f"📋 Request headers: {dict(request.headers)}")
-    logger.info(f"📦 Request data: {request.data}")
+    # Get all users and their data
+    users_data = []
+    for user in User.objects.all():
+        user_data = {
+            'id': user.id,
+            'email': user.email,
+            'username': user.username,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'gender': user.gender,
+            'height': user.height,
+            'weight': user.weight,
+            'age': user.age,
+            'fitness_level': user.fitness_level,
+            'fitness_goal': user.fitness_goal,
+            'specific_goal': user.specific_goal,
+            'has_completed_onboarding': user.has_completed_onboarding,
+            'created_at': user.created_at,
+            'updated_at': user.updated_at,
+        }
+        
+        # Get body composition data
+        try:
+            body_comp = BodyComposition.objects.get(user=user)
+            user_data['body_composition'] = {
+                'body_fat': body_comp.body_fat,
+                'muscle_mass': body_comp.muscle_mass,
+                'bone_mass': body_comp.bone_mass,
+                'water_weight': body_comp.water_weight,
+                'bmr': body_comp.bmr,
+                'visceral_fat': body_comp.visceral_fat,
+                'protein_mass': body_comp.protein_mass,
+                'bmi': body_comp.bmi,
+                'muscle_rate': body_comp.muscle_rate,
+                'metabolic_age': body_comp.metabolic_age,
+                'weight_without_fat': body_comp.weight_without_fat,
+            }
+        except BodyComposition.DoesNotExist:
+            user_data['body_composition'] = None
+        
+        # Get body measurements data
+        try:
+            measurements = BodyMeasurements.objects.get(user=user)
+            user_data['body_measurements'] = {
+                'chest': measurements.chest,
+                'neck': measurements.neck,
+                'waist': measurements.waist,
+                'left_arm': measurements.left_arm,
+                'right_arm': measurements.right_arm,
+                'left_thigh': measurements.left_thigh,
+                'right_thigh': measurements.right_thigh,
+                'shoulders': measurements.shoulders,
+                'hips': measurements.hips,
+                'calves': measurements.calves,
+            }
+        except BodyMeasurements.DoesNotExist:
+            user_data['body_measurements'] = None
+        
+        # Get goal measurements data
+        try:
+            goals = GoalMeasurements.objects.get(user=user)
+            user_data['goal_measurements'] = {
+                'chest': goals.chest,
+                'neck': goals.neck,
+                'waist': goals.waist,
+                'left_arm': goals.left_arm,
+                'right_arm': goals.right_arm,
+                'left_thigh': goals.left_thigh,
+                'right_thigh': goals.right_thigh,
+                'shoulders': goals.shoulders,
+                'hips': goals.hips,
+                'calves': goals.calves,
+                'target_weight': goals.target_weight,
+            }
+        except GoalMeasurements.DoesNotExist:
+            user_data['goal_measurements'] = None
+        
+        users_data.append(user_data)
     
     return Response({
-        'message': 'Backend connection successful!',
-        'method': request.method,
+        'message': 'User data from database',
+        'total_users': len(users_data),
+        'users': users_data
+    })
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def health_check(request):
+    """Health check endpoint to verify API connectivity"""
+    return Response({
+        'message': 'API is running',
+        'status': 'healthy',
         'timestamp': str(datetime.now()),
-        'headers': dict(request.headers),
-        'data': request.data
     })
 
 @api_view(['GET', 'POST'])
@@ -465,8 +782,13 @@ def google_login(request):
         refresh = RefreshToken.for_user(user)
         logger.info("Tokens generated successfully")
         
+        # Get user data with serializer
+        user_data = UserSerializer(user).data
+        logger.info(f"User data being sent to frontend: {user_data}")
+        logger.info(f"hasCompletedOnboarding value: {user_data.get('hasCompletedOnboarding')}")
+        
         response_data = {
-            'user': UserSerializer(user).data,
+            'user': user_data,
             'tokens': {
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
@@ -476,6 +798,7 @@ def google_login(request):
         }
         
         logger.info(f"Google login successful for user: {user.email}")
+        logger.info(f"Full response data: {response_data}")
         return Response(response_data)
         
     except ValueError as e:
@@ -488,3 +811,5 @@ def google_login(request):
         return Response({
             'error': f'Google login failed: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+

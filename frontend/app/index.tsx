@@ -30,16 +30,30 @@ export default function WelcomeScreen() {
   });
 
   useEffect(() => {
-    if (isInitialized) {
+    const initAuth = async () => {
+      if (!isInitialized) {
+        await useAuthStore.getState().initialize();
+      }
       setIsReady(true);
-    }
+    };
+    
+    initAuth();
   }, [isInitialized]);
 
   useEffect(() => {
     if (pathname === '/' && isReady && isAuthenticated && user) {
+      console.log('User authenticated on main screen:', user);
+      console.log('hasCompletedOnboarding:', user.hasCompletedOnboarding);
+      
+      // Check authentication state
+      const authState = useAuthStore.getState().checkAuthState();
+      console.log('Current auth state on main screen:', authState);
+      
       if (user.hasCompletedOnboarding) {
+        console.log('User has completed onboarding, redirecting to main app');
         router.replace('/(tabs)');
       } else {
+        console.log('User has not completed onboarding, redirecting to onboarding');
         router.replace('/onboarding/profile');
       }
     }
@@ -52,16 +66,33 @@ export default function WelcomeScreen() {
         setLoading(true);
         setErrorState(null);
         try {
+          console.log('🔄 Processing Google sign-in response...');
+          
           // Use the backend API for Google authentication
           const { loginWithGoogle } = useAuthStore.getState();
           await loginWithGoogle(response.params.id_token);
           
+          console.log('✅ Google authentication successful');
+          
+          // Wait a bit to ensure state is updated
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           // Get the updated user state after login
-          const { user } = useAuthStore.getState();
+          const { user, isAuthenticated } = useAuthStore.getState();
+          console.log('👤 Updated user state:', { user, isAuthenticated });
+          
           if (user?.hasCompletedOnboarding) {
-            router.replace('/(tabs)');
+            console.log('🏠 User has completed onboarding, redirecting to home tab');
+            // Use setTimeout to ensure navigation happens after component is ready
+            setTimeout(() => {
+              router.replace('/(tabs)/');
+            }, 100);
           } else {
-            router.replace('/onboarding/profile');
+            console.log('📝 User has not completed onboarding, redirecting to onboarding');
+            // Use setTimeout to ensure navigation happens after component is ready
+            setTimeout(() => {
+              router.replace('/onboarding/profile');
+            }, 100);
           }
         } catch (e: any) {
           console.error('Google sign-in error:', e);
@@ -93,17 +124,7 @@ export default function WelcomeScreen() {
     }
   };
 
-  const handleTestConnection = async () => {
-    try {
-      console.log('🧪 Testing backend connection...');
-      const result = await authAPI.testConnection();
-      console.log('✅ Backend connection test result:', result);
-      alert('Backend connection successful! Check console for details.');
-    } catch (error) {
-      console.error('❌ Backend connection test failed:', error);
-      alert('Backend connection failed! Check console for details.');
-    }
-  };
+
 
   if (!isReady) {
     return (
@@ -165,13 +186,7 @@ export default function WelcomeScreen() {
             <Text style={styles.googleButtonText}>{isLoading ? 'Signing up...' : 'Sign up with Google'}</Text>
           </TouchableOpacity>
           
-          {/* Test Connection Button */}
-          <TouchableOpacity 
-            style={[styles.googleButton, { backgroundColor: '#FF5722', marginTop: 10, marginBottom: 10 }]} 
-            onPress={handleTestConnection}
-          >
-            <Text style={[styles.googleButtonText, { color: 'white', fontWeight: 'bold' }]}>🧪 TEST BACKEND CONNECTION</Text>
-          </TouchableOpacity>
+
           
           <Button
             title="Get Started"

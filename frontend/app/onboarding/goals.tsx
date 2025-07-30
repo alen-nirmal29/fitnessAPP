@@ -36,7 +36,7 @@ export default function GoalsScreen() {
         console.log('Updating fitness goal...');
         
         // Update profile with the selected goal
-        updateProfile({
+        await updateProfile({
           fitnessGoal: selectedGoal,
         });
         

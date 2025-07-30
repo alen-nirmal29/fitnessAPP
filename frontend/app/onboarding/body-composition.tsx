@@ -95,7 +95,7 @@ export default function BodyCompositionScreen() {
       
       console.log('Updating body composition:', composition);
       
-      updateProfile({
+              await updateProfile({
         bodyComposition: composition,
       });
       

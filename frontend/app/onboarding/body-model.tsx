@@ -74,7 +74,7 @@ export default function BodyModelScreen() {
     setIsLoading(true);
     try {
       setInOnboarding(true);
-      updateProfile({
+              await updateProfile({
         currentMeasurements: {
           chest: Number(measurements.chest),
           neck: Number(measurements.neck),

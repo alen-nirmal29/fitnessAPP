@@ -19,4 +19,10 @@ urlpatterns = [
     # Analytics
     path('analytics/', views.AnalyticsListCreateView.as_view(), name='analytics-list-create'),
     path('analytics/<int:pk>/', views.AnalyticsRetrieveUpdateDestroyView.as_view(), name='analytics-detail'),
+
+    # Additional endpoints
+    path('save-entry/', views.save_progress_entry, name='save-progress-entry'),
+    path('history/', views.get_user_progress_history, name='progress-history'),
+    path('stats/', views.get_user_progress_stats, name='progress-stats'),
+    path('save-goal/', views.save_goal, name='save-goal'),
 ] 

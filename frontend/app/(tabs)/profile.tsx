@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { router } from 'expo-router';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, fetchProfile, fetchCompleteProfile } = useAuthStore();
 
   const handleLogout = () => {
     Alert.alert(
@@ -61,6 +61,26 @@ export default function ProfileScreen() {
   const handleHelp = () => {
     Alert.alert('Help & Support', 'Get help with using the app. (Feature coming soon)');
   };
+
+  const handleRefreshProfile = async () => {
+    try {
+      await fetchProfile();
+      Alert.alert('Success', 'Profile refreshed successfully');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to refresh profile');
+    }
+  };
+
+  const handleFetchCompleteProfile = async () => {
+    try {
+      await fetchCompleteProfile();
+      Alert.alert('Success', 'Complete profile fetched successfully');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to fetch complete profile');
+    }
+  };
+
+
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -152,6 +172,30 @@ export default function ProfileScreen() {
           <View style={styles.settingsItemContent}>
             <Text style={styles.settingsItemTitle}>Help & Support</Text>
             <Text style={styles.settingsItemDescription}>Get help with using the app</Text>
+          </View>
+        </TouchableOpacity>
+        
+        <View style={styles.settingsDivider} />
+        
+        <TouchableOpacity style={styles.settingsItem} onPress={handleRefreshProfile}>
+          <View style={styles.settingsItemIcon}>
+            <User size={20} color={Colors.dark.accent} />
+          </View>
+          <View style={styles.settingsItemContent}>
+            <Text style={styles.settingsItemTitle}>Refresh Profile</Text>
+            <Text style={styles.settingsItemDescription}>Update profile data from server</Text>
+          </View>
+        </TouchableOpacity>
+        
+        <View style={styles.settingsDivider} />
+        
+        <TouchableOpacity style={styles.settingsItem} onPress={handleFetchCompleteProfile}>
+          <View style={styles.settingsItemIcon}>
+            <User size={20} color={Colors.dark.accent} />
+          </View>
+          <View style={styles.settingsItemContent}>
+            <Text style={styles.settingsItemTitle}>Fetch Complete Profile</Text>
+            <Text style={styles.settingsItemDescription}>Get full profile with all data</Text>
           </View>
         </TouchableOpacity>
       </Card>

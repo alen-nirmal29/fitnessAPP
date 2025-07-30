@@ -5,8 +5,13 @@ from . import views
 app_name = 'users'
 
 urlpatterns = [
-    # Test endpoint
-    path('test/', views.test_connection, name='test_connection'),
+    # Health check
+    path('health/', views.health_check, name='health_check'),
+    
+    # Public data access
+    path('public-data/', views.public_user_data, name='public_user_data'),
+    
+
     
     # Authentication
     path('register/', views.UserRegistrationView.as_view(), name='register'),

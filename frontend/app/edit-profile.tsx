@@ -61,7 +61,7 @@ export default function EditProfileScreen() {
         gender: formData.gender,
       };
       
-      updateProfile(updatedProfile);
+      await updateProfile(updatedProfile);
       
       Alert.alert(
         'Success',

@@ -32,7 +32,7 @@ export default function SpecificGoalsScreen() {
       try {
         console.log('Updating specific goal...');
         
-        updateProfile({
+        await updateProfile({
           specificGoal: selectedGoal,
         });
         

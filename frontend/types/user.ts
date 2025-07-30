@@ -25,11 +25,15 @@ export type BodyComposition = {
 
 export type BodyMeasurements = {
   chest: number;
+  neck: number;
   waist: number;
-  hips: number;
-  arms: number;
-  legs: number;
-  shoulders: number;
+  leftarm: number;
+  rightarm: number;
+  leftthigh: number;
+  rightthigh: number;
+  shoulders?: number;
+  hips?: number;
+  calves?: number;
 };
 
 export type UserProfile = {

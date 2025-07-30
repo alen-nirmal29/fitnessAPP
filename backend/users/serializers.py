@@ -3,24 +3,33 @@ from django.contrib.auth import authenticate
 from .models import User, BodyComposition, BodyMeasurements, GoalMeasurements
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for User model"""
+    """Serializer for User model with frontend field mapping"""
+    # Frontend field names (camelCase)
+    fitnessGoal = serializers.CharField(source='fitness_goal', required=False)
+    specificGoal = serializers.CharField(source='specific_goal', required=False)
+    hasCompletedOnboarding = serializers.BooleanField(source='has_completed_onboarding')
+    
     class Meta:
         model = User
         fields = [
             'id', 'email', 'username', 'first_name', 'last_name',
             'height', 'weight', 'gender', 'age', 'fitness_level',
-            'fitness_goal', 'specific_goal', 'has_completed_onboarding',
+            'fitnessGoal', 'specificGoal', 'hasCompletedOnboarding',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    """Serializer for user profile updates during onboarding"""
+    """Serializer for user profile updates during onboarding with frontend field mapping"""
+    # Frontend field names (camelCase)
+    fitnessGoal = serializers.CharField(source='fitness_goal', required=False)
+    specificGoal = serializers.CharField(source='specific_goal', required=False)
+    
     class Meta:
         model = User
         fields = [
             'height', 'weight', 'gender', 'age', 'fitness_level',
-            'fitness_goal', 'specific_goal'
+            'fitnessGoal', 'specificGoal'
         ]
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -64,52 +73,80 @@ class UserLoginSerializer(serializers.Serializer):
         return attrs
 
 class BodyCompositionSerializer(serializers.ModelSerializer):
-    """Serializer for BodyComposition model"""
+    """Serializer for BodyComposition model with frontend field mapping"""
+    # Frontend field names (camelCase)
+    bodyFat = serializers.DecimalField(source='body_fat', max_digits=4, decimal_places=1, required=False)
+    muscleMass = serializers.DecimalField(source='muscle_mass', max_digits=5, decimal_places=2, required=False)
+    boneMass = serializers.DecimalField(source='bone_mass', max_digits=4, decimal_places=2, required=False)
+    waterWeight = serializers.DecimalField(source='water_weight', max_digits=4, decimal_places=1, required=False)
+    visceralFat = serializers.DecimalField(source='visceral_fat', max_digits=3, decimal_places=1, required=False)
+    proteinMass = serializers.DecimalField(source='protein_mass', max_digits=4, decimal_places=2, required=False)
+    muscleRate = serializers.DecimalField(source='muscle_rate', max_digits=4, decimal_places=1, required=False)
+    metabolicAge = serializers.IntegerField(source='metabolic_age', required=False)
+    weightWithoutFat = serializers.DecimalField(source='weight_without_fat', max_digits=5, decimal_places=2, required=False)
+    
     class Meta:
         model = BodyComposition
         fields = [
-            'id', 'body_fat', 'muscle_mass', 'bone_mass', 'water_weight',
-            'bmr', 'visceral_fat', 'protein_mass', 'bmi', 'muscle_rate',
-            'metabolic_age', 'weight_without_fat', 'composition_image',
+            'id', 'bodyFat', 'muscleMass', 'boneMass', 'waterWeight',
+            'bmr', 'visceralFat', 'proteinMass', 'bmi', 'muscleRate',
+            'metabolicAge', 'weightWithoutFat', 'composition_image',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 class BodyMeasurementsSerializer(serializers.ModelSerializer):
-    """Serializer for BodyMeasurements model"""
+    """Serializer for BodyMeasurements model with frontend field mapping"""
+    # Frontend field names (matching actual usage)
+    leftarm = serializers.DecimalField(source='left_arm', max_digits=4, decimal_places=1, required=False)
+    rightarm = serializers.DecimalField(source='right_arm', max_digits=4, decimal_places=1, required=False)
+    leftthigh = serializers.DecimalField(source='left_thigh', max_digits=4, decimal_places=1, required=False)
+    rightthigh = serializers.DecimalField(source='right_thigh', max_digits=4, decimal_places=1, required=False)
+    
     class Meta:
         model = BodyMeasurements
         fields = [
-            'id', 'chest', 'neck', 'waist', 'left_arm', 'right_arm',
-            'left_thigh', 'right_thigh', 'shoulders', 'hips', 'calves',
+            'id', 'chest', 'neck', 'waist', 'leftarm', 'rightarm',
+            'leftthigh', 'rightthigh', 'shoulders', 'hips', 'calves',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 class GoalMeasurementsSerializer(serializers.ModelSerializer):
-    """Serializer for GoalMeasurements model"""
+    """Serializer for GoalMeasurements model with frontend field mapping"""
+    # Frontend field names (matching actual usage)
+    leftarm = serializers.DecimalField(source='left_arm', max_digits=4, decimal_places=1, required=False)
+    rightarm = serializers.DecimalField(source='right_arm', max_digits=4, decimal_places=1, required=False)
+    leftthigh = serializers.DecimalField(source='left_thigh', max_digits=4, decimal_places=1, required=False)
+    rightthigh = serializers.DecimalField(source='right_thigh', max_digits=4, decimal_places=1, required=False)
+    targetWeight = serializers.DecimalField(source='target_weight', max_digits=5, decimal_places=2, required=False)
+    
     class Meta:
         model = GoalMeasurements
         fields = [
-            'id', 'chest', 'neck', 'waist', 'left_arm', 'right_arm',
-            'left_thigh', 'right_thigh', 'shoulders', 'hips', 'calves',
-            'target_weight', 'created_at', 'updated_at'
+            'id', 'chest', 'neck', 'waist', 'leftarm', 'rightarm',
+            'leftthigh', 'rightthigh', 'shoulders', 'hips', 'calves',
+            'targetWeight', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 class UserCompleteProfileSerializer(serializers.ModelSerializer):
-    """Complete user profile with related data"""
-    body_composition = BodyCompositionSerializer(read_only=True)
-    current_measurements = BodyMeasurementsSerializer(read_only=True)
-    goal_measurements = GoalMeasurementsSerializer(read_only=True)
+    """Complete user profile with related data and frontend field mapping"""
+    # Frontend field names (camelCase)
+    fitnessGoal = serializers.CharField(source='fitness_goal', required=False)
+    specificGoal = serializers.CharField(source='specific_goal', required=False)
+    hasCompletedOnboarding = serializers.BooleanField(source='has_completed_onboarding')
+    bodyComposition = BodyCompositionSerializer(source='body_composition', read_only=True)
+    currentMeasurements = BodyMeasurementsSerializer(source='current_measurements', read_only=True)
+    goalMeasurements = GoalMeasurementsSerializer(source='goal_measurements', read_only=True)
     
     class Meta:
         model = User
         fields = [
             'id', 'email', 'username', 'first_name', 'last_name',
             'height', 'weight', 'gender', 'age', 'fitness_level',
-            'fitness_goal', 'specific_goal', 'has_completed_onboarding',
-            'body_composition', 'current_measurements', 'goal_measurements',
+            'fitnessGoal', 'specificGoal', 'hasCompletedOnboarding',
+            'bodyComposition', 'currentMeasurements', 'goalMeasurements',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

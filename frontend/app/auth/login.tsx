@@ -54,11 +54,25 @@ export default function LoginScreen() {
           await loginWithGoogle(response.params.id_token);
           
           // Get the updated user state after login
-          const { user } = useAuthStore.getState();
-          if (user?.hasCompletedOnboarding) {
-            router.replace('/(tabs)');
+          const { user, isAuthenticated } = useAuthStore.getState();
+          console.log('Google login successful, user:', user);
+          console.log('isAuthenticated:', isAuthenticated);
+          console.log('hasCompletedOnboarding:', user?.hasCompletedOnboarding);
+          
+          // Check authentication state
+          const authState = useAuthStore.getState().checkAuthState();
+          console.log('Current auth state after Google login:', authState);
+          
+          if (isAuthenticated && user) {
+            if (user.hasCompletedOnboarding) {
+              console.log('User has completed onboarding, redirecting to main app');
+              router.replace('/(tabs)');
+            } else {
+              console.log('User has not completed onboarding, redirecting to onboarding');
+              router.replace('/onboarding/profile');
+            }
           } else {
-            router.replace('/onboarding/profile');
+            console.log('User not properly authenticated, staying on login screen');
           }
         } catch (e: any) {
           console.error('Google sign-in error:', e);
@@ -103,7 +117,28 @@ export default function LoginScreen() {
     setErrorState(null);
     try {
       await login(email, password);
-      router.replace('/(tabs)');
+      
+      // Get the updated user state after login
+      const { user, isAuthenticated } = useAuthStore.getState();
+      console.log('Login successful, user:', user);
+      console.log('isAuthenticated:', isAuthenticated);
+      console.log('hasCompletedOnboarding:', user?.hasCompletedOnboarding);
+      
+      // Check authentication state
+      const authState = useAuthStore.getState().checkAuthState();
+      console.log('Current auth state after login:', authState);
+      
+      if (isAuthenticated && user) {
+        if (user.hasCompletedOnboarding) {
+          console.log('User has completed onboarding, redirecting to main app');
+          router.replace('/(tabs)');
+        } else {
+          console.log('User has not completed onboarding, redirecting to onboarding');
+          router.replace('/onboarding/profile');
+        }
+      } else {
+        console.log('User not properly authenticated, staying on login screen');
+      }
     } catch (e: any) {
       setErrorState(e.message || 'Login failed');
     } finally {

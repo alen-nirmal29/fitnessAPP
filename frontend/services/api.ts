@@ -4,9 +4,13 @@ import { AUTH_ENDPOINTS, WORKOUT_ENDPOINTS, PROGRESS_ENDPOINTS, AI_ENDPOINTS, AP
 // Get authentication headers with proper token retrieval
 const getAuthHeaders = async () => {
   try {
+    console.log('🔍 Attempting to retrieve access token...');
     const token = await AsyncStorage.getItem('accessToken');
     
+    console.log('🔑 Token found:', token ? `${token.substring(0, 20)}...` : 'No token found');
+    
     if (!token) {
+      console.error('❌ No access token found in AsyncStorage');
       throw new Error('No access token found');
     }
     
@@ -15,9 +19,11 @@ const getAuthHeaders = async () => {
       'Authorization': `Bearer ${token}`,
     };
     
+    console.log('✅ Auth headers created successfully');
+    console.log('📤 Headers being sent:', { ...headers, Authorization: 'Bearer [HIDDEN]' });
     return headers;
   } catch (error) {
-    console.error('Error getting auth headers:', error);
+    console.error('❌ Error getting auth headers:', error);
     throw new Error('Authentication failed');
   }
 };
@@ -38,6 +44,7 @@ const apiRequest = async (
       headers = { 'Content-Type': 'application/json' };
     }
   } catch (error) {
+    console.error('❌ Authentication error:', error);
     throw new Error('Authentication required');
   }
   
@@ -49,343 +56,182 @@ const apiRequest = async (
 
   try {
     console.log(`🌐 Making ${method} request to:`, url);
-    console.log('📦 Request config:', { method, headers, body: data });
+    console.log('📦 Request config:', { 
+      method, 
+      headers: { ...headers, Authorization: headers.Authorization ? 'Bearer [HIDDEN]' : undefined }, 
+      body: data 
+    });
     
     const response = await fetch(url, config);
-    const responseData = await response.json();
     
-    console.log('📊 Response status:', response.status);
-    console.log('📄 Response data:', responseData);
-
+    console.log('📥 Response status:', response.status);
+    
     if (!response.ok) {
-      // Handle token expiration
-      if (response.status === 401 && requireAuth) {
-        // Try to refresh token
-        const refreshToken = await AsyncStorage.getItem('refreshToken');
-        if (refreshToken) {
-          try {
-            const refreshResponse = await fetch(AUTH_ENDPOINTS.TOKEN_REFRESH, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ refresh: refreshToken }),
-            });
-
-            if (refreshResponse.ok) {
-              const refreshData = await refreshResponse.json();
-              await AsyncStorage.setItem('accessToken', refreshData.access);
-              
-              // Retry the original request with new token
-              const newHeaders = await getAuthHeaders();
-              const retryResponse = await fetch(url, {
-                ...config,
-                headers: newHeaders,
-              });
-              
-              if (retryResponse.ok) {
-                const retryData = await retryResponse.json();
-                return retryData;
-              }
-            }
-          } catch (refreshError) {
-            console.error('Token refresh failed:', refreshError);
-            // Clear tokens and redirect to login
-            await AsyncStorage.removeItem('accessToken');
-            await AsyncStorage.removeItem('refreshToken');
-            throw new Error('Authentication expired. Please login again.');
-          }
-        }
-      }
-      
-      throw new Error(responseData.detail || responseData.error || `HTTP ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      console.error('❌ API request failed:', errorData);
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
     }
-
+    
+    const responseData = await response.json();
+    console.log('✅ API request successful:', responseData);
     return responseData;
-  } catch (error: any) {
-    console.error(`API ${method} request failed:`, error);
+  } catch (error) {
+    console.error('❌ API request error:', error);
     throw error;
   }
 };
 
 // Auth API functions
 export const authAPI = {
-  // Test connection
-  testConnection: async () => {
-    console.log('🧪 Testing backend connection...');
-    return apiRequest(`${API_BASE_URL}/auth/test/`, 'GET', undefined, false);
+  register: async (data: any) => {
+    return apiRequest(AUTH_ENDPOINTS.REGISTER, 'POST', data, false);
   },
-
-  // Registration
-  register: async (userData: { email: string; password: string; confirm_password: string; username: string; first_name: string; last_name: string }) => {
-    return apiRequest(AUTH_ENDPOINTS.REGISTER, 'POST', userData, false);
+  
+  login: async (data: any) => {
+    return apiRequest(AUTH_ENDPOINTS.LOGIN, 'POST', data, false);
   },
-
-  // Login
-  login: async (credentials: { email: string; password: string }) => {
-    return apiRequest(AUTH_ENDPOINTS.LOGIN, 'POST', credentials, false);
+  
+  googleLogin: async (data: any) => {
+    return apiRequest(AUTH_ENDPOINTS.GOOGLE_LOGIN, 'POST', data, false);
   },
-
-  // Google Login
-  googleLogin: async (idToken: string) => {
-    console.log('🌐 Making Google login API request to:', AUTH_ENDPOINTS.GOOGLE_LOGIN);
-    console.log('🔑 ID token (first 20 chars):', idToken.substring(0, 20) + '...');
-    console.log('📦 Request payload:', { id_token: idToken.substring(0, 20) + '...' });
-    return apiRequest(AUTH_ENDPOINTS.GOOGLE_LOGIN, 'POST', { id_token: idToken }, false);
-  },
-
-  // Get Profile
+  
   getProfile: async () => {
     return apiRequest(AUTH_ENDPOINTS.PROFILE, 'GET');
   },
-
-  // Update Profile
-  updateProfile: async (profileData: any) => {
-    return apiRequest(AUTH_ENDPOINTS.PROFILE_UPDATE, 'PUT', profileData);
+  
+  getCompleteProfile: async () => {
+    return apiRequest(AUTH_ENDPOINTS.PROFILE_COMPLETE, 'GET');
   },
-
-  // Onboarding Step
-  updateOnboardingStep: async (step: string, data: any) => {
-    return apiRequest(AUTH_ENDPOINTS.ONBOARDING_STEP, 'POST', { step, data });
+  
+  updateProfile: async (data: any) => {
+    return apiRequest(AUTH_ENDPOINTS.PROFILE_UPDATE, 'PUT', data);
   },
-
-  // Complete Onboarding
-  completeOnboarding: async () => {
-    return apiRequest(AUTH_ENDPOINTS.ONBOARDING_COMPLETE, 'POST');
+  
+  updateOnboardingStep: async (data: any) => {
+    return apiRequest(AUTH_ENDPOINTS.ONBOARDING_STEP, 'POST', data);
   },
-
-  // Body Composition
-  updateBodyComposition: async (compositionData: any) => {
-    return apiRequest(AUTH_ENDPOINTS.BODY_COMPOSITION, 'POST', compositionData);
+  
+  completeOnboarding: async (data: any) => {
+    return apiRequest(AUTH_ENDPOINTS.ONBOARDING_COMPLETE, 'POST', data);
   },
-
-  // Body Measurements
-  updateBodyMeasurements: async (measurementsData: any) => {
-    return apiRequest(AUTH_ENDPOINTS.MEASUREMENTS, 'POST', measurementsData);
+  
+  updateBodyComposition: async (data: any) => {
+    return apiRequest(AUTH_ENDPOINTS.BODY_COMPOSITION, 'POST', data);
   },
-
-  // Goal Measurements
-  updateGoalMeasurements: async (goalData: any) => {
-    return apiRequest(AUTH_ENDPOINTS.GOAL_MEASUREMENTS, 'POST', goalData);
+  
+  updateMeasurements: async (data: any) => {
+    return apiRequest(AUTH_ENDPOINTS.MEASUREMENTS, 'POST', data);
+  },
+  
+  updateGoalMeasurements: async (data: any) => {
+    return apiRequest(AUTH_ENDPOINTS.GOAL_MEASUREMENTS, 'POST', data);
+  },
+  
+  healthCheck: async () => {
+    return apiRequest(AUTH_ENDPOINTS.HEALTH, 'GET', undefined, false);
   },
 };
 
 // Workout API functions
 export const workoutAPI = {
-  // Exercises
-  getExercises: async () => {
-    return apiRequest(WORKOUT_ENDPOINTS.EXERCISES, 'GET');
+  // Get user's workout plans
+  getUserPlans: async () => {
+    return apiRequest(WORKOUT_ENDPOINTS.USER_PLANS, 'GET');
   },
-
-  createExercise: async (exerciseData: any) => {
-    return apiRequest(WORKOUT_ENDPOINTS.EXERCISES, 'POST', exerciseData);
+  
+  // Create new workout plan
+  createPlan: async (data: any) => {
+    return apiRequest(WORKOUT_ENDPOINTS.PLANS, 'POST', data);
   },
-
-  getExercise: async (id: number) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.EXERCISES}${id}/`, 'GET');
+  
+  // Get workout statistics
+  getStats: async () => {
+    return apiRequest(WORKOUT_ENDPOINTS.STATS, 'GET');
   },
-
-  updateExercise: async (id: number, exerciseData: any) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.EXERCISES}${id}/`, 'PUT', exerciseData);
+  
+  // Save workout progress
+  saveProgress: async (data: any) => {
+    return apiRequest(WORKOUT_ENDPOINTS.PROGRESS, 'POST', data);
   },
-
-  deleteExercise: async (id: number) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.EXERCISES}${id}/`, 'DELETE');
+  
+  // Get workout history
+  getHistory: async (page: number = 1, pageSize: number = 10) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    });
+    return apiRequest(`${WORKOUT_ENDPOINTS.HISTORY}?${params}`, 'GET');
   },
-
-  // Workout Plans
-  getWorkoutPlans: async () => {
-    return apiRequest(WORKOUT_ENDPOINTS.PLANS, 'GET');
+  
+  // Create workout session
+  createSession: async (data: any) => {
+    return apiRequest(WORKOUT_ENDPOINTS.SESSIONS, 'POST', data);
   },
-
-  createWorkoutPlan: async (planData: any) => {
-    return apiRequest(WORKOUT_ENDPOINTS.PLANS, 'POST', planData);
+  
+  // Update workout session
+  updateSession: async (sessionId: number, data: any) => {
+    return apiRequest(`${WORKOUT_ENDPOINTS.SESSIONS}${sessionId}/`, 'PUT', data);
   },
-
-  getWorkoutPlan: async (id: number) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.PLANS}${id}/`, 'GET');
-  },
-
-  updateWorkoutPlan: async (id: number, planData: any) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.PLANS}${id}/`, 'PUT', planData);
-  },
-
-  deleteWorkoutPlan: async (id: number) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.PLANS}${id}/`, 'DELETE');
-  },
-
-  // Workout Sessions
-  getWorkoutSessions: async () => {
-    return apiRequest(WORKOUT_ENDPOINTS.SESSIONS, 'GET');
-  },
-
-  createWorkoutSession: async (sessionData: any) => {
-    console.log('🏋️ Creating workout session with data:', sessionData);
-    return apiRequest(WORKOUT_ENDPOINTS.SESSIONS, 'POST', sessionData);
-  },
-
-  getWorkoutSession: async (id: number) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.SESSIONS}${id}/`, 'GET');
-  },
-
-  updateWorkoutSession: async (id: number, sessionData: any) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.SESSIONS}${id}/`, 'PUT', sessionData);
-  },
-
-  deleteWorkoutSession: async (id: number) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.SESSIONS}${id}/`, 'DELETE');
-  },
-
-  // Exercise Sets
-  getExerciseSets: async () => {
-    return apiRequest(WORKOUT_ENDPOINTS.SETS, 'GET');
-  },
-
-  createExerciseSet: async (setData: any) => {
-    console.log('💪 Creating exercise set with data:', setData);
-    return apiRequest(WORKOUT_ENDPOINTS.SETS, 'POST', setData);
-  },
-
-  getExerciseSet: async (id: number) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.SETS}${id}/`, 'GET');
-  },
-
-  updateExerciseSet: async (id: number, setData: any) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.SETS}${id}/`, 'PUT', setData);
-  },
-
-  deleteExerciseSet: async (id: number) => {
-    return apiRequest(`${WORKOUT_ENDPOINTS.SETS}${id}/`, 'DELETE');
+  
+  // Create exercise set
+  createExerciseSet: async (data: any) => {
+    return apiRequest(WORKOUT_ENDPOINTS.SETS, 'POST', data);
   },
 };
 
 // Progress API functions
 export const progressAPI = {
-  // Progress Entries
-  getProgressEntries: async () => {
-    return apiRequest(PROGRESS_ENDPOINTS.ENTRIES, 'GET');
+  // Save progress entry
+  saveEntry: async (data: any) => {
+    return apiRequest(PROGRESS_ENDPOINTS.SAVE_ENTRY, 'POST', data);
   },
-
-  createProgressEntry: async (entryData: any) => {
-    return apiRequest(PROGRESS_ENDPOINTS.ENTRIES, 'POST', entryData);
+  
+  // Get progress history
+  getHistory: async (page: number = 1, pageSize: number = 10) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    });
+    return apiRequest(`${PROGRESS_ENDPOINTS.HISTORY}?${params}`, 'GET');
   },
-
-  getProgressEntry: async (id: number) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.ENTRIES}${id}/`, 'GET');
+  
+  // Get progress statistics
+  getStats: async () => {
+    return apiRequest(PROGRESS_ENDPOINTS.STATS, 'GET');
   },
-
-  updateProgressEntry: async (id: number, entryData: any) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.ENTRIES}${id}/`, 'PUT', entryData);
+  
+  // Save goal
+  saveGoal: async (data: any) => {
+    return apiRequest(PROGRESS_ENDPOINTS.SAVE_GOAL, 'POST', data);
   },
-
-  deleteProgressEntry: async (id: number) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.ENTRIES}${id}/`, 'DELETE');
-  },
-
-  // Workout Progress
-  getWorkoutProgress: async () => {
-    return apiRequest(PROGRESS_ENDPOINTS.WORKOUT_PROGRESS, 'GET');
-  },
-
-  createWorkoutProgress: async (progressData: any) => {
-    return apiRequest(PROGRESS_ENDPOINTS.WORKOUT_PROGRESS, 'POST', progressData);
-  },
-
-  getWorkoutProgressById: async (id: number) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.WORKOUT_PROGRESS}${id}/`, 'GET');
-  },
-
-  updateWorkoutProgress: async (id: number, progressData: any) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.WORKOUT_PROGRESS}${id}/`, 'PUT', progressData);
-  },
-
-  deleteWorkoutProgress: async (id: number) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.WORKOUT_PROGRESS}${id}/`, 'DELETE');
-  },
-
-  // Goals
+  
+  // Get goals
   getGoals: async () => {
     return apiRequest(PROGRESS_ENDPOINTS.GOALS, 'GET');
   },
-
-  createGoal: async (goalData: any) => {
-    return apiRequest(PROGRESS_ENDPOINTS.GOALS, 'POST', goalData);
-  },
-
-  getGoal: async (id: number) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.GOALS}${id}/`, 'GET');
-  },
-
-  updateGoal: async (id: number, goalData: any) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.GOALS}${id}/`, 'PUT', goalData);
-  },
-
-  deleteGoal: async (id: number) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.GOALS}${id}/`, 'DELETE');
-  },
-
-  // Analytics
-  getAnalytics: async () => {
-    return apiRequest(PROGRESS_ENDPOINTS.ANALYTICS, 'GET');
-  },
-
-  createAnalytics: async (analyticsData: any) => {
-    return apiRequest(PROGRESS_ENDPOINTS.ANALYTICS, 'POST', analyticsData);
-  },
-
-  getAnalyticsById: async (id: number) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.ANALYTICS}${id}/`, 'GET');
-  },
-
-  updateAnalytics: async (id: number, analyticsData: any) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.ANALYTICS}${id}/`, 'PUT', analyticsData);
-  },
-
-  deleteAnalytics: async (id: number) => {
-    return apiRequest(`${PROGRESS_ENDPOINTS.ANALYTICS}${id}/`, 'DELETE');
+  
+  // Create progress entry (legacy endpoint)
+  createEntry: async (data: any) => {
+    return apiRequest(PROGRESS_ENDPOINTS.ENTRIES, 'POST', data);
   },
 };
 
 // AI API functions
 export const aiAPI = {
-  // AI Requests
-  getAIRequests: async () => {
-    return apiRequest(AI_ENDPOINTS.REQUESTS, 'GET');
+  createRequest: async (data: any) => {
+    return apiRequest(AI_ENDPOINTS.REQUESTS, 'POST', data);
   },
-
-  createAIRequest: async (requestData: any) => {
-    return apiRequest(AI_ENDPOINTS.REQUESTS, 'POST', requestData);
-  },
-
-  getAIRequest: async (id: number) => {
-    return apiRequest(`${AI_ENDPOINTS.REQUESTS}${id}/`, 'GET');
-  },
-
-  updateAIRequest: async (id: number, requestData: any) => {
-    return apiRequest(`${AI_ENDPOINTS.REQUESTS}${id}/`, 'PUT', requestData);
-  },
-
-  deleteAIRequest: async (id: number) => {
-    return apiRequest(`${AI_ENDPOINTS.REQUESTS}${id}/`, 'DELETE');
-  },
-
-  // AI Recommendations
-  getAIRecommendations: async () => {
+  
+  getRecommendations: async () => {
     return apiRequest(AI_ENDPOINTS.RECOMMENDATIONS, 'GET');
   },
-
-  createAIRecommendation: async (recommendationData: any) => {
-    return apiRequest(AI_ENDPOINTS.RECOMMENDATIONS, 'POST', recommendationData);
+  
+  getTraining: async () => {
+    return apiRequest(AI_ENDPOINTS.TRAINING, 'GET');
   },
-
-  getAIRecommendation: async (id: number) => {
-    return apiRequest(`${AI_ENDPOINTS.RECOMMENDATIONS}${id}/`, 'GET');
-  },
-
-  updateAIRecommendation: async (id: number, recommendationData: any) => {
-    return apiRequest(`${AI_ENDPOINTS.RECOMMENDATIONS}${id}/`, 'PUT', recommendationData);
-  },
-
-  deleteAIRecommendation: async (id: number) => {
-    return apiRequest(`${AI_ENDPOINTS.RECOMMENDATIONS}${id}/`, 'DELETE');
+  
+  getModels: async () => {
+    return apiRequest(AI_ENDPOINTS.MODELS, 'GET');
   },
 };
 

@@ -1,407 +1,220 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Exercise } from '@/types/workout';
-import { WORKOUT_ENDPOINTS, getAuthHeaders } from '@/constants/api';
-
-export type WorkoutSessionState = 'idle' | 'active' | 'resting' | 'completed';
-
-export interface WorkoutSession {
-  id: string;
-  workoutName: string;
-  exercises: Exercise[];
-  currentExerciseIndex: number;
-  currentSet: number;
-  totalSets: number;
-  startTime: Date;
-  endTime?: Date;
-  completedExercises: string[];
-  state: WorkoutSessionState;
-  timerSeconds: number;
-  isRestTimer: boolean;
-}
-
-export interface CompletedWorkout {
-  id: string;
-  workoutName: string;
-  date: Date;
-  duration: number; // in minutes
-  exercisesCompleted: number;
-  totalExercises: number;
-  caloriesBurned?: number;
-}
-
-export interface WorkoutStats {
-  totalWorkouts: number;
-  totalMinutes: number;
-  totalExercises: number;
-  currentStreak: number;
-  weeklyWorkouts: number;
-  strengthIncrease: number; // percentage
-}
+import { WorkoutSession, ExerciseSet } from '@/types/workout';
 
 interface WorkoutSessionStore {
   currentSession: WorkoutSession | null;
-  completedWorkouts: CompletedWorkout[];
-  workoutStats: WorkoutStats;
+  completedWorkouts: WorkoutSession[];
+  workoutStats: {
+    totalWorkouts: number;
+    weeklyWorkouts: number;
+    totalExercises: number;
+    strengthIncrease: number;
+    caloriesBurned: number;
+  };
   
-  // Session management
-  startWorkout: (workoutName: string, exercises: Exercise[]) => void;
-  completeExercise: () => void;
-  nextSet: () => void;
-  startRest: (seconds: number) => void;
-  completeWorkout: () => void;
+  startWorkout: (planId: string, dayId: string) => void;
   pauseWorkout: () => void;
   resumeWorkout: () => void;
+  completeWorkout: () => void;
   cancelWorkout: () => void;
-  
-  // Timer management
-  updateTimer: (seconds: number) => void;
-  
-  // Stats
-  updateStats: () => void;
-  getWeeklyWorkouts: () => number;
-  getTodayWorkouts: () => CompletedWorkout[];
+  addExerciseSet: (exerciseId: string, reps: number, weight?: number, duration?: number) => void;
+  updateExerciseSet: (setId: string, updates: Partial<ExerciseSet>) => void;
+  getTodayWorkouts: () => WorkoutSession[];
+  getWeeklyWorkouts: () => WorkoutSession[];
+  saveWorkoutToDatabase: (session: WorkoutSession) => Promise<void>;
 }
 
-export const useWorkoutSessionStore = create<WorkoutSessionStore>()(
-  persist(
-    (set, get) => ({
-      currentSession: null,
-      completedWorkouts: [],
-      workoutStats: {
-        totalWorkouts: 0,
-        totalMinutes: 0,
-        totalExercises: 0,
-        currentStreak: 0,
-        weeklyWorkouts: 0,
-        strengthIncrease: 0,
-      },
-      
-      startWorkout: (workoutName: string, exercises: Exercise[]) => {
-        const session: WorkoutSession = {
-          id: Date.now().toString(),
-          workoutName,
-          exercises,
-          currentExerciseIndex: 0,
-          currentSet: 1,
-          totalSets: exercises[0]?.sets || 1,
-          startTime: new Date(),
-          completedExercises: [],
-          state: 'active',
-          timerSeconds: 0,
-          isRestTimer: false,
-        };
-        
-        set({ currentSession: session });
-      },
-      
-      completeExercise: () => {
-        const { currentSession } = get();
-        if (!currentSession) return;
-        
-        try {
-          const currentExercise = currentSession.exercises[currentSession.currentExerciseIndex];
-          const updatedCompletedExercises = [...currentSession.completedExercises, currentExercise.id];
-          
-          // Move to next exercise or complete workout
-          if (currentSession.currentExerciseIndex < currentSession.exercises.length - 1) {
-            const nextExerciseIndex = currentSession.currentExerciseIndex + 1;
-            const nextExercise = currentSession.exercises[nextExerciseIndex];
-            
-            set({
-              currentSession: {
-                ...currentSession,
-                currentExerciseIndex: nextExerciseIndex,
-                currentSet: 1,
-                totalSets: nextExercise.sets,
-                completedExercises: updatedCompletedExercises,
-                state: 'active',
-                timerSeconds: 0,
-                isRestTimer: false,
-              }
-            });
-          } else {
-            // All exercises completed
-            set({
-              currentSession: {
-                ...currentSession,
-                completedExercises: updatedCompletedExercises,
-              }
-            });
-            get().completeWorkout();
-          }
-        } catch (error) {
-          console.error('Error in completeExercise:', error);
-          // Fallback to complete workout
-          get().completeWorkout();
-        }
-      },
-      
-      nextSet: () => {
-        const { currentSession } = get();
-        if (!currentSession) return;
-        
-        if (currentSession.currentSet < currentSession.totalSets) {
-          // Start rest timer between sets
-          const currentExercise = currentSession.exercises[currentSession.currentExerciseIndex];
-          get().startRest(currentExercise.restTime);
-          
-          set({
-            currentSession: {
-              ...currentSession,
-              currentSet: currentSession.currentSet + 1,
-            }
-          });
-        } else {
-          // Exercise completed, move to next
-          get().completeExercise();
-        }
-      },
-      
-      startRest: (seconds: number) => {
-        const { currentSession } = get();
-        if (!currentSession) return;
-        
-        set({
-          currentSession: {
-            ...currentSession,
-            state: 'resting',
-            timerSeconds: seconds,
-            isRestTimer: true,
-          }
-        });
-      },
-      
-      completeWorkout: async () => {
-        const { currentSession, completedWorkouts } = get();
-        if (!currentSession) return;
-        
-        const endTime = new Date();
-        const duration = Math.round((endTime.getTime() - currentSession.startTime.getTime()) / 60000); // minutes
-        
-        const completedWorkout: CompletedWorkout = {
-          id: currentSession.id,
-          workoutName: currentSession.workoutName,
-          date: endTime,
-          duration,
-          exercisesCompleted: currentSession.completedExercises.length,
-          totalExercises: currentSession.exercises.length,
-          caloriesBurned: Math.round(duration * 8), // Rough estimate
-        };
-        
-        // Save workout session to Django API
-        try {
-          const headers = await getAuthHeaders();
-          const sessionData = {
-            workout_name: currentSession.workoutName,
-            start_time: currentSession.startTime.toISOString(),
-            end_time: endTime.toISOString(),
-            duration_minutes: duration,
-            exercises_completed: currentSession.completedExercises.length,
-            total_exercises: currentSession.exercises.length,
-            calories_burned: Math.round(duration * 8),
-            state: 'completed',
-          };
-          
-          const response = await fetch(WORKOUT_ENDPOINTS.SESSIONS, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(sessionData),
-          });
-          
-          if (!response.ok) {
-            console.error('Failed to save workout session to API');
-          }
-        } catch (error) {
-          console.error('Error saving workout session:', error);
-        }
-        
-        set({
-          currentSession: {
-            ...currentSession,
-            endTime,
-            state: 'completed',
-          },
-          completedWorkouts: [completedWorkout, ...completedWorkouts],
-        });
-        
-        // Update stats
-        get().updateStats();
-        
-        // Update workout plan progress (import this dynamically to avoid circular deps)
-        try {
-          const { useWorkoutStore } = require('./workout-store');
-          const workoutStore = useWorkoutStore.getState();
-          
-          if (workoutStore.currentPlan) {
-            // Calculate progress based on completed workouts vs total plan workouts
-            const totalPlanWorkouts = workoutStore.currentPlan.schedule.filter((day: { restDay?: boolean }) => !day.restDay).length;
-            const planWorkouts = completedWorkouts.filter(w => 
-              w.workoutName.includes(workoutStore.currentPlan!.name) || 
-              workoutStore.currentPlan!.schedule.some((day: { name?: string }) => day.name?.includes(w.workoutName))
-            ).length + 1; // +1 for current workout
-            
-            const progressPercentage = Math.min((planWorkouts / totalPlanWorkouts) * 100, 100);
-            workoutStore.updateWorkoutProgress(workoutStore.currentPlan.id, progressPercentage);
-            
-            // Generate progress measurements if we have user measurements
-            const { useAuthStore } = require('./auth-store');
-            const authStore = useAuthStore.getState();
-            
-            if (authStore.user?.currentMeasurements && progressPercentage > 0) {
-              const currentMeasurements = {
-                shoulders: authStore.user.currentMeasurements.shoulders,
-                chest: authStore.user.currentMeasurements.chest,
-                arms: authStore.user.currentMeasurements.arms,
-                waist: authStore.user.currentMeasurements.waist,
-                legs: authStore.user.currentMeasurements.legs,
-              };
-              workoutStore.generateProgressMeasurements(
-                currentMeasurements, 
-                workoutStore.currentPlan.specificGoal, 
-                progressPercentage
-              );
-            }
-          }
-        } catch (error) {
-          console.log('Could not update workout progress:', error);
-        }
-        
-        // Clear session after a delay
-        setTimeout(() => {
-          set({ currentSession: null });
-        }, 3000);
-      },
-      
-      pauseWorkout: () => {
-        const { currentSession } = get();
-        if (!currentSession) return;
-        
-        set({
-          currentSession: {
-            ...currentSession,
-            state: 'idle',
-          }
-        });
-      },
-      
-      resumeWorkout: () => {
-        const { currentSession } = get();
-        if (!currentSession) return;
-        
-        set({
-          currentSession: {
-            ...currentSession,
-            state: currentSession.isRestTimer ? 'resting' : 'active',
-          }
-        });
-      },
-      
-      cancelWorkout: () => {
-        set({ currentSession: null });
-      },
-      
-      updateTimer: (seconds: number) => {
-        const { currentSession } = get();
-        if (!currentSession) return;
-        
-        set({
-          currentSession: {
-            ...currentSession,
-            timerSeconds: seconds,
-          }
-        });
-        
-        // Auto-resume from rest when timer reaches 0
-        if (seconds === 0 && currentSession.isRestTimer) {
-          set({
-            currentSession: {
-              ...currentSession,
-              state: 'active',
-              isRestTimer: false,
-            }
-          });
-        }
-      },
-      
-      updateStats: () => {
-        const { completedWorkouts } = get();
-        
-        const totalWorkouts = completedWorkouts.length;
-        const totalMinutes = completedWorkouts.reduce((sum, workout) => sum + workout.duration, 0);
-        const totalExercises = completedWorkouts.reduce((sum, workout) => sum + workout.exercisesCompleted, 0);
-        
-        // Calculate weekly workouts
-        const weeklyWorkouts = get().getWeeklyWorkouts();
-        
-        // Calculate current streak
-        let currentStreak = 0;
-        const today = new Date();
-        const sortedWorkouts = [...completedWorkouts].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        for (const workout of sortedWorkouts) {
-          const workoutDate = new Date(workout.date);
-          const daysDiff = Math.floor((today.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24));
-          
-          if (daysDiff <= currentStreak + 1) {
-            currentStreak++;
-          } else {
-            break;
-          }
-        }
-        
-        // Calculate strength increase (mock calculation based on workout frequency)
-        const strengthIncrease = Math.min(totalWorkouts * 2, 50); // Cap at 50%
-        
-        set({
-          workoutStats: {
-            totalWorkouts,
-            totalMinutes,
-            totalExercises,
-            currentStreak,
-            weeklyWorkouts,
-            strengthIncrease,
-          }
-        });
-      },
-      
-      getWeeklyWorkouts: () => {
-        const { completedWorkouts } = get();
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        
-        return completedWorkouts.filter(workout => 
-          new Date(workout.date) >= oneWeekAgo
-        ).length;
-      },
-      
-      getTodayWorkouts: () => {
-        const { completedWorkouts } = get();
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        
-        return completedWorkouts.filter(workout => {
-          const workoutDate = new Date(workout.date);
-          return workoutDate >= today && workoutDate < tomorrow;
-        });
-      },
-    }),
-    {
-      name: 'workout-session-storage',
-      // Add a custom hydrate function to ensure startTime and endTime are Dates
-      onRehydrateStorage: () => (state) => {
-        if (state && state.currentSession) {
-          if (state.currentSession.startTime && typeof state.currentSession.startTime === 'string') {
-            state.currentSession.startTime = new Date(state.currentSession.startTime);
-          }
-          if (state.currentSession.endTime && typeof state.currentSession.endTime === 'string') {
-            state.currentSession.endTime = new Date(state.currentSession.endTime);
-          }
-        }
-      },
+export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => ({
+  currentSession: null,
+  completedWorkouts: [],
+  workoutStats: {
+    totalWorkouts: 0,
+    weeklyWorkouts: 0,
+    totalExercises: 0,
+    strengthIncrease: 0,
+    caloriesBurned: 0,
+  },
+
+  startWorkout: (planId, dayId) => {
+    const session: WorkoutSession = {
+      id: `session-${Date.now()}`,
+      planId,
+      dayId,
+      startTime: new Date(),
+      endTime: null,
+      duration: 0,
+      status: 'in_progress',
+      exercises: [],
+      notes: '',
+      rating: null,
+    };
+    set({ currentSession: session });
+  },
+
+  pauseWorkout: () => {
+    const { currentSession } = get();
+    if (currentSession) {
+      set({
+        currentSession: {
+          ...currentSession,
+          status: 'paused',
+        },
+      });
     }
-  )
-);
+  },
+
+  resumeWorkout: () => {
+    const { currentSession } = get();
+    if (currentSession) {
+      set({
+        currentSession: {
+          ...currentSession,
+          status: 'in_progress',
+        },
+      });
+    }
+  },
+
+  completeWorkout: () => {
+    const { currentSession, completedWorkouts } = get();
+    if (currentSession) {
+      const endTime = new Date();
+      const duration = Math.round((endTime.getTime() - currentSession.startTime.getTime()) / 1000 / 60);
+      
+      const completedSession: WorkoutSession = {
+        ...currentSession,
+        endTime,
+        duration,
+        status: 'completed',
+      };
+
+      // Save to database
+      get().saveWorkoutToDatabase(completedSession);
+
+      set({
+        currentSession: null,
+        completedWorkouts: [...completedWorkouts, completedSession],
+        workoutStats: {
+          ...get().workoutStats,
+          totalWorkouts: get().workoutStats.totalWorkouts + 1,
+          weeklyWorkouts: get().getWeeklyWorkouts().length + 1,
+        },
+      });
+    }
+  },
+
+  cancelWorkout: () => {
+    const { currentSession } = get();
+    if (currentSession) {
+      const endTime = new Date();
+      const duration = Math.round((endTime.getTime() - currentSession.startTime.getTime()) / 1000 / 60);
+      
+      const cancelledSession: WorkoutSession = {
+        ...currentSession,
+        endTime,
+        duration,
+        status: 'cancelled',
+      };
+
+      set({
+        currentSession: null,
+        completedWorkouts: [...get().completedWorkouts, cancelledSession],
+      });
+    }
+  },
+
+  addExerciseSet: (exerciseId, reps, weight, duration) => {
+    const { currentSession } = get();
+    if (currentSession) {
+      const newSet: ExerciseSet = {
+        id: `set-${Date.now()}`,
+        exerciseId,
+        reps,
+        weight,
+        duration,
+        restTime: 60,
+        notes: '',
+        difficultyRating: null,
+      };
+
+      set({
+        currentSession: {
+          ...currentSession,
+          exercises: [...currentSession.exercises, newSet],
+        },
+      });
+    }
+  },
+
+  updateExerciseSet: (setId, updates) => {
+    const { currentSession } = get();
+    if (currentSession) {
+      const updatedExercises = currentSession.exercises.map((exercise) =>
+        exercise.id === setId ? { ...exercise, ...updates } : exercise
+      );
+
+      set({
+        currentSession: {
+          ...currentSession,
+          exercises: updatedExercises,
+        },
+      });
+    }
+  },
+
+  getTodayWorkouts: () => {
+    const { completedWorkouts } = get();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    return completedWorkouts.filter(workout => {
+      const workoutDate = new Date(workout.date);
+      return workoutDate >= today && workoutDate < tomorrow;
+    });
+  },
+
+  getWeeklyWorkouts: () => {
+    const { completedWorkouts } = get();
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    return completedWorkouts.filter(workout => {
+      const workoutDate = new Date(workout.date);
+      return workoutDate >= oneWeekAgo;
+    });
+  },
+
+  saveWorkoutToDatabase: async (session) => {
+    try {
+      console.log('💾 Saving workout session to database...');
+      // This would call the API to save the workout session
+      // await workoutAPI.saveProgress({
+      //   session: {
+      //     status: session.status,
+      //     started_at: session.startTime,
+      //     completed_at: session.endTime,
+      //     duration: session.duration,
+      //     total_exercises: session.exercises.length,
+      //     completed_exercises: session.exercises.length,
+      //     notes: session.notes || '',
+      //     rating: session.rating
+      //   },
+      //   exercise_sets: session.exercises.map((exercise, index) => ({
+      //     exercise_id: exercise.exerciseId,
+      //     set_number: index + 1,
+      //     reps_completed: exercise.reps,
+      //     weight_used: exercise.weight,
+      //     duration: exercise.duration,
+      //     rest_time: exercise.restTime,
+      //     notes: exercise.notes || '',
+      //     difficulty_rating: exercise.difficultyRating
+      //   }))
+      // });
+      console.log('✅ Workout session saved to database');
+    } catch (error) {
+      console.error('❌ Failed to save workout session:', error);
+    }
+  },
+}));

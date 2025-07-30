@@ -5,6 +5,9 @@ from . import views
 app_name = 'users'
 
 urlpatterns = [
+    # Test endpoint
+    path('test/', views.test_connection, name='test_connection'),
+    
     # Authentication
     path('register/', views.UserRegistrationView.as_view(), name='register'),
     path('login/', views.UserLoginView.as_view(), name='login'),

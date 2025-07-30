@@ -9,11 +9,9 @@ import Button from '@/components/Button';
 import { useAuthStore } from '@/store/auth-store';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
-import { apiKey, db } from '@/firebase';
 import { usePathname } from 'expo-router';
 import { makeRedirectUri } from 'expo-auth-session';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { UserProfile } from '@/types/user';
+import { authAPI } from '@/services/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -54,38 +52,17 @@ export default function WelcomeScreen() {
         setLoading(true);
         setErrorState(null);
         try {
-          const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${apiKey}`;
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              postBody: `id_token=${response.params.id_token}&providerId=google.com`,
-              requestUri: 'http://localhost',
-              returnIdpCredential: true,
-              returnSecureToken: true,
-            }),
-          });
-  
-          const data = await res.json();
-          if (data.error) throw new Error(data.error.message);
-  
-          const userProfile: UserProfile = {
-            id: data.localId,
-            email: data.email,
-            name: data.displayName || data.fullName || '',
-            hasCompletedOnboarding: false,
-          };
-  
-          const userDoc = await getDoc(doc(db, 'users', data.localId));
-          if (userDoc.exists()) {
-            const existingData = userDoc.data();
-            Object.assign(userProfile, existingData);
+          // Use the backend API for Google authentication
+          const { loginWithGoogle } = useAuthStore.getState();
+          await loginWithGoogle(response.params.id_token);
+          
+          // Get the updated user state after login
+          const { user } = useAuthStore.getState();
+          if (user?.hasCompletedOnboarding) {
+            router.replace('/(tabs)');
           } else {
-            await setDoc(doc(db, 'users', data.localId), userProfile);
+            router.replace('/onboarding/profile');
           }
-  
-          useAuthStore.getState().setUser(userProfile, data.idToken, data.refreshToken);
-          router.replace('/onboarding/profile');
         } catch (e: any) {
           console.error('Google sign-in error:', e);
           setErrorState(e.message || 'Google sign-in failed');
@@ -113,6 +90,18 @@ export default function WelcomeScreen() {
     } catch (e) {
       setErrorState('Google signup error');
       setLoading(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    try {
+      console.log('🧪 Testing backend connection...');
+      const result = await authAPI.testConnection();
+      console.log('✅ Backend connection test result:', result);
+      alert('Backend connection successful! Check console for details.');
+    } catch (error) {
+      console.error('❌ Backend connection test failed:', error);
+      alert('Backend connection failed! Check console for details.');
     }
   };
 
@@ -175,6 +164,15 @@ export default function WelcomeScreen() {
             />
             <Text style={styles.googleButtonText}>{isLoading ? 'Signing up...' : 'Sign up with Google'}</Text>
           </TouchableOpacity>
+          
+          {/* Test Connection Button */}
+          <TouchableOpacity 
+            style={[styles.googleButton, { backgroundColor: '#FF5722', marginTop: 10, marginBottom: 10 }]} 
+            onPress={handleTestConnection}
+          >
+            <Text style={[styles.googleButtonText, { color: 'white', fontWeight: 'bold' }]}>🧪 TEST BACKEND CONNECTION</Text>
+          </TouchableOpacity>
+          
           <Button
             title="Get Started"
             onPress={handleGetStarted}

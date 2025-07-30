@@ -142,7 +142,7 @@ class WorkoutSession(models.Model):
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='workout_sessions')
-    workout_day = models.ForeignKey(WorkoutDay, on_delete=models.CASCADE, related_name='sessions')
+    workout_day = models.ForeignKey(WorkoutDay, on_delete=models.CASCADE, related_name='sessions', null=True, blank=True)
     
     # Session tracking
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_started')

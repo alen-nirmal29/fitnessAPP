@@ -39,13 +39,34 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       setUser: (user, accessToken, refreshToken) => {
+        console.log('🔄 Transforming backend user data to frontend format...');
+        console.log('📥 Backend user data:', user);
+        
+        // Transform backend user data to frontend format
+        const transformedUser: UserProfile = {
+          id: user.id.toString(),
+          email: user.email,
+          name: user.first_name || user.name || '',
+          height: user.height,
+          weight: user.weight,
+          gender: user.gender,
+          fitnessGoal: user.fitness_goal,
+          specificGoal: user.specific_goal,
+          hasCompletedOnboarding: user.has_completed_onboarding || false,
+        };
+        
+        console.log('📤 Transformed user data:', transformedUser);
+        console.log('🔐 Setting authentication state...');
+        
         set({
           isAuthenticated: true,
-          user,
+          user: transformedUser,
           accessToken,
           refreshToken,
           isLoading: false,
         });
+        
+        console.log('✅ User authentication state updated');
       },
 
       getAccessToken: async () => {
@@ -82,6 +103,7 @@ export const useAuthStore = create<AuthStore>()(
           const data = await authAPI.register({ 
             email, 
             password, 
+            confirm_password: password, // Add confirm_password field
             username: email, 
             first_name: name,
             last_name: ''
@@ -102,12 +124,20 @@ export const useAuthStore = create<AuthStore>()(
       loginWithGoogle: async (idToken) => {
         set({ isLoading: true, error: null });
         try {
+          console.log('🔄 Attempting Google login with backend API...');
+          console.log('📤 Sending ID token to backend...');
           const data = await authAPI.googleLogin(idToken);
+          console.log('✅ Google login successful:', data);
+          console.log('👤 User data received:', data.user);
 
           // Store tokens in both state and AsyncStorage
+          console.log('💾 Storing tokens...');
           await get().setTokens(data.tokens.access, data.tokens.refresh);
+          console.log('👤 Setting user in store...');
           get().setUser(data.user, data.tokens.access, data.tokens.refresh);
+          console.log('✅ Google login completed successfully');
         } catch (error: any) {
+          console.error('❌ Google login error:', error);
           set({
             error: error.message || 'Google login failed',
             isLoading: false,

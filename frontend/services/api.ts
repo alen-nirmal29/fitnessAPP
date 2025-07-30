@@ -1,8 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AUTH_ENDPOINTS, WORKOUT_ENDPOINTS, PROGRESS_ENDPOINTS, AI_ENDPOINTS } from '@/constants/api';
-
-// API Configuration
-const API_BASE_URL = 'http://localhost:8000/api';
+import { AUTH_ENDPOINTS, WORKOUT_ENDPOINTS, PROGRESS_ENDPOINTS, AI_ENDPOINTS, API_BASE_URL } from '@/constants/api';
 
 // Get authentication headers with proper token retrieval
 const getAuthHeaders = async () => {
@@ -51,8 +48,14 @@ const apiRequest = async (
   };
 
   try {
+    console.log(`🌐 Making ${method} request to:`, url);
+    console.log('📦 Request config:', { method, headers, body: data });
+    
     const response = await fetch(url, config);
     const responseData = await response.json();
+    
+    console.log('📊 Response status:', response.status);
+    console.log('📄 Response data:', responseData);
 
     if (!response.ok) {
       // Handle token expiration
@@ -105,8 +108,14 @@ const apiRequest = async (
 
 // Auth API functions
 export const authAPI = {
+  // Test connection
+  testConnection: async () => {
+    console.log('🧪 Testing backend connection...');
+    return apiRequest(`${API_BASE_URL}/auth/test/`, 'GET', undefined, false);
+  },
+
   // Registration
-  register: async (userData: { email: string; password: string; username: string; first_name: string; last_name: string }) => {
+  register: async (userData: { email: string; password: string; confirm_password: string; username: string; first_name: string; last_name: string }) => {
     return apiRequest(AUTH_ENDPOINTS.REGISTER, 'POST', userData, false);
   },
 
@@ -117,6 +126,9 @@ export const authAPI = {
 
   // Google Login
   googleLogin: async (idToken: string) => {
+    console.log('🌐 Making Google login API request to:', AUTH_ENDPOINTS.GOOGLE_LOGIN);
+    console.log('🔑 ID token (first 20 chars):', idToken.substring(0, 20) + '...');
+    console.log('📦 Request payload:', { id_token: idToken.substring(0, 20) + '...' });
     return apiRequest(AUTH_ENDPOINTS.GOOGLE_LOGIN, 'POST', { id_token: idToken }, false);
   },
 
@@ -206,6 +218,7 @@ export const workoutAPI = {
   },
 
   createWorkoutSession: async (sessionData: any) => {
+    console.log('🏋️ Creating workout session with data:', sessionData);
     return apiRequest(WORKOUT_ENDPOINTS.SESSIONS, 'POST', sessionData);
   },
 
@@ -227,6 +240,7 @@ export const workoutAPI = {
   },
 
   createExerciseSet: async (setData: any) => {
+    console.log('💪 Creating exercise set with data:', setData);
     return apiRequest(WORKOUT_ENDPOINTS.SETS, 'POST', setData);
   },
 

@@ -54,8 +54,29 @@ class WorkoutSessionListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return WorkoutSession.objects.filter(user=self.request.user)
 
+    def create(self, request, *args, **kwargs):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"🏋️ Workout session creation request received")
+        logger.info(f"👤 User: {request.user.email}")
+        logger.info(f"📦 Request data: {request.data}")
+        
+        try:
+            response = super().create(request, *args, **kwargs)
+            logger.info(f"✅ Workout session created successfully: {response.data}")
+            return response
+        except Exception as e:
+            logger.error(f"❌ Workout session creation failed: {str(e)}")
+            raise
+
     def perform_create(self, serializer):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"💾 Saving workout session...")
         serializer.save(user=self.request.user)
+        logger.info(f"✅ Workout session saved successfully")
 
 class WorkoutSessionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = WorkoutSessionSerializer
@@ -72,8 +93,29 @@ class ExerciseSetListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return ExerciseSet.objects.filter(session__user=self.request.user)
 
+    def create(self, request, *args, **kwargs):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"💪 Exercise set creation request received")
+        logger.info(f"👤 User: {request.user.email}")
+        logger.info(f"📦 Request data: {request.data}")
+        
+        try:
+            response = super().create(request, *args, **kwargs)
+            logger.info(f"✅ Exercise set created successfully: {response.data}")
+            return response
+        except Exception as e:
+            logger.error(f"❌ Exercise set creation failed: {str(e)}")
+            raise
+
     def perform_create(self, serializer):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"💾 Saving exercise set...")
         serializer.save()
+        logger.info(f"✅ Exercise set saved successfully")
 
 class ExerciseSetRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ExerciseSetSerializer

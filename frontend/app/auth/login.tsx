@@ -21,7 +21,6 @@ import { useAuthStore } from '@/store/auth-store';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
-import { apiKey } from '@/firebase';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -34,7 +33,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setErrorState] = useState<string | null>(null);
 
-  const { login, isAuthenticated, isInitialized, user } = useAuthStore();
+  const { login, loginWithGoogle, isAuthenticated, isInitialized, user } = useAuthStore();
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId,
@@ -51,29 +50,20 @@ export default function LoginScreen() {
         setIsLoading(true);
         setErrorState(null);
         try {
-          const redirectUri = makeRedirectUri({ scheme: 'com.rork.fitshape',useProxy: false });
-          const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=${apiKey}`;
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              postBody: `id_token=${response.params.id_token}&providerId=google.com`,
-              requestUri: redirectUri,
-              returnIdpCredential: true,
-              returnSecureToken: true,
-            }),
-          });
-
-          const data = await res.json();
-          if (data.error) throw new Error(data.error.message);
-
-          // Store user data in Zustand
-          useAuthStore.getState().setUser(data);
-
-          setIsLoading(false);
-          router.replace('/(tabs)'); // Redirect after login
+          // Use the backend API for Google authentication
+          await loginWithGoogle(response.params.id_token);
+          
+          // Get the updated user state after login
+          const { user } = useAuthStore.getState();
+          if (user?.hasCompletedOnboarding) {
+            router.replace('/(tabs)');
+          } else {
+            router.replace('/onboarding/profile');
+          }
         } catch (e: any) {
+          console.error('Google sign-in error:', e);
           setErrorState(e.message || 'Google sign-in failed');
+        } finally {
           setIsLoading(false);
         }
       })();
@@ -98,8 +88,8 @@ export default function LoginScreen() {
 
     if (!password) {
       newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
     }
 
     setErrors(newErrors);

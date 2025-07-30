@@ -7,6 +7,7 @@ from django.db import transaction
 from google.auth.transport import requests
 from google.oauth2 import id_token
 from django.conf import settings
+from datetime import datetime
 from .models import User, BodyComposition, BodyMeasurements, GoalMeasurements
 from .serializers import (
     UserSerializer, UserProfileSerializer, UserRegistrationSerializer,
@@ -20,21 +21,31 @@ class UserRegistrationView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     
     def create(self, request, *args, **kwargs):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"Registration request received: {request.data}")
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         
+        logger.info(f"User registered successfully: {user.email}")
+        
         # Generate tokens
         refresh = RefreshToken.for_user(user)
         
-        return Response({
+        response_data = {
             'user': UserSerializer(user).data,
             'tokens': {
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
             },
             'message': 'User registered successfully'
-        }, status=status.HTTP_201_CREATED)
+        }
+        
+        logger.info(f"Registration successful for user: {user.email}")
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     def get(self, request, *args, **kwargs):
         """GET method for debugging - shows registration form data"""
@@ -57,20 +68,30 @@ class UserLoginView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
     
     def post(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"Login request received: {request.data}")
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         user = serializer.validated_data['user']
+        logger.info(f"User authenticated successfully: {user.email}")
+        
         refresh = RefreshToken.for_user(user)
         
-        return Response({
+        response_data = {
             'user': UserSerializer(user).data,
             'tokens': {
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
             },
             'message': 'Login successful'
-        })
+        }
+        
+        logger.info(f"Login successful for user: {user.email}")
+        return Response(response_data)
 
     def get(self, request):
         """GET method for debugging - shows login form data"""
@@ -359,9 +380,36 @@ def complete_onboarding(request):
 
 @api_view(['GET', 'POST'])
 @permission_classes([permissions.AllowAny])
+def test_connection(request):
+    """Test endpoint to verify frontend can reach backend"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"🔗 Test connection request received: {request.method}")
+    logger.info(f"📋 Request headers: {dict(request.headers)}")
+    logger.info(f"📦 Request data: {request.data}")
+    
+    return Response({
+        'message': 'Backend connection successful!',
+        'method': request.method,
+        'timestamp': str(datetime.now()),
+        'headers': dict(request.headers),
+        'data': request.data
+    })
+
+@api_view(['GET', 'POST'])
+@permission_classes([permissions.AllowAny])
 def google_login(request):
     """Handle Google OAuth login"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Google login request received: {request.method}")
+    logger.info(f"Request headers: {dict(request.headers)}")
+    logger.info(f"Request data: {request.data}")
+    
     if request.method == 'GET':
+        logger.info("Google login GET request - returning debug info")
         return Response({
             'message': 'Google Login endpoint - GET method for debugging',
             'method': 'GET',
@@ -372,18 +420,24 @@ def google_login(request):
         })
     
     try:
+        logger.info("Processing Google login POST request")
         id_token_data = request.data.get('id_token')
+        logger.info(f"ID token received: {id_token_data[:50] if id_token_data else 'None'}...")
+        
         if not id_token_data:
+            logger.error("No ID token provided")
             return Response({
                 'error': 'ID token is required'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Verify the Google ID token
+        logger.info("Verifying Google ID token...")
         idinfo = id_token.verify_oauth2_token(
             id_token_data, 
             requests.Request(), 
             '876432031351-h5hmbv4qj96aci5ngcrfqa4kdvef24s2.apps.googleusercontent.com'
         )
+        logger.info(f"Token verified successfully. User info: {idinfo}")
         
         # Extract user information
         google_id = idinfo['sub']
@@ -391,6 +445,8 @@ def google_login(request):
         name = idinfo.get('name', '')
         first_name = idinfo.get('given_name', '')
         last_name = idinfo.get('family_name', '')
+        
+        logger.info(f"Extracted user info - Email: {email}, Name: {name}")
         
         # Check if user exists, create if not
         user, created = User.objects.get_or_create(
@@ -403,10 +459,13 @@ def google_login(request):
             }
         )
         
+        logger.info(f"User {'created' if created else 'found'}: {user.email}")
+        
         # Generate tokens
         refresh = RefreshToken.for_user(user)
+        logger.info("Tokens generated successfully")
         
-        return Response({
+        response_data = {
             'user': UserSerializer(user).data,
             'tokens': {
                 'access': str(refresh.access_token),
@@ -414,13 +473,18 @@ def google_login(request):
             },
             'message': 'Google login successful',
             'is_new_user': created
-        })
+        }
+        
+        logger.info(f"Google login successful for user: {user.email}")
+        return Response(response_data)
         
     except ValueError as e:
+        logger.error(f"Invalid ID token error: {str(e)}")
         return Response({
             'error': 'Invalid ID token'
         }, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
+        logger.error(f"Google login failed with exception: {str(e)}")
         return Response({
             'error': f'Google login failed: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

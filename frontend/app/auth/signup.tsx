@@ -43,9 +43,9 @@ export default function SignupScreen() {
 
   useEffect(() => {
     // Navigate to onboarding if user is authenticated and hasn't completed onboarding
-    if (isAuthenticated && user && !user.has_completed_onboarding) {
+    if (isAuthenticated && user && !user.hasCompletedOnboarding) {
       router.replace('/onboarding/profile');
-    } else if (isAuthenticated && user && user.has_completed_onboarding) {
+    } else if (isAuthenticated && user && user.hasCompletedOnboarding) {
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, user]);
@@ -71,8 +71,8 @@ export default function SignupScreen() {
     }
     if (!password) {
       newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
     }
 
     setErrors(newErrors);

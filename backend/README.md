@@ -168,7 +168,7 @@ python manage.py migrate
 ```
 
 ### Django Admin
-Access the admin interface at `http://localhost:8000/admin/`
+Access the admin interface at `http://192.168.0.105:8000/admin/`
 
 ## Production Deployment
 

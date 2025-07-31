@@ -1,15 +1,15 @@
 import React, { Suspense } from 'react';
 import { View } from 'react-native';
 import { Canvas } from '@react-three/fiber/native';
-import { useGLTF, OrbitControls, Stage } from '@react-three/drei';
+import { useGLTF, OrbitControls, Stage, useFBX } from '@react-three/drei';
 import * as THREE from 'three';
 
-// Use raw GitHub URLs for the .glb models
+// Use raw GitHub URLs for the .fbx models
 const getModelUrl = (gender: 'male' | 'female') => {
   if (gender === 'female') {
-    return 'https://github.com/alen-nirmal29/female_model/raw/main/female_model.glb';
+    return 'https://github.com/alen-nirmal29/female_model/raw/main/female_human_model.fbx';
   }
-  return 'https://github.com/alen-nirmal29/male_model/raw/main/male_model.glb';
+  return 'https://github.com/alen-nirmal29/male_model/raw/main/male_human_model.fbx';
 };
 
 interface Measurements {
@@ -23,7 +23,7 @@ interface Measurements {
 }
 
 function Model({ gender, measurements }: { gender: 'male' | 'female', measurements?: Measurements }) {
-  const { scene } = useGLTF(getModelUrl(gender));
+  const scene = useFBX(getModelUrl(gender));
   const groupRef = React.useRef<THREE.Group>(null);
 
   React.useLayoutEffect(() => {

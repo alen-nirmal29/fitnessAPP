@@ -14,6 +14,7 @@ interface AuthStore extends AuthState {
   loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
+  saveUserData: (data: any, step?: string) => Promise<void>;
   fetchProfile: () => Promise<void>;
   fetchCompleteProfile: () => Promise<void>;
   completeOnboarding: () => void;
@@ -47,9 +48,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         refreshToken: refreshToken ? `${refreshToken.substring(0, 20)}...` : 'None'
       });
       
-      if (accessToken) {
+      // Validate tokens before using them
+      if (accessToken && accessToken !== 'None' && accessToken !== 'null' && accessToken.length > 10) {
         set({ accessToken, refreshToken });
-        console.log('✅ Tokens restored from storage');
+        console.log('✅ Valid tokens restored from storage');
         
         try {
           console.log('🔄 Attempting to fetch user profile...');
@@ -61,7 +63,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           await get().clearAuthData();
         }
       } else {
-        console.log('ℹ️ No tokens found, user not authenticated');
+        console.log('ℹ️ No valid tokens found, user not authenticated');
+        // Clear any invalid tokens
+        if (accessToken === 'None' || accessToken === 'null') {
+          await get().clearAuthData();
+        }
       }
       
       set({ isInitialized: true });
@@ -125,6 +131,18 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   setTokens: async (accessToken: string, refreshToken: string) => {
     console.log('💾 Storing tokens in AsyncStorage...');
+    
+    // Validate tokens before storing
+    if (!accessToken || accessToken === 'None' || accessToken === 'null') {
+      console.error('❌ Invalid access token:', accessToken);
+      throw new Error('Invalid access token received');
+    }
+    
+    if (!refreshToken || refreshToken === 'None' || refreshToken === 'null') {
+      console.error('❌ Invalid refresh token:', refreshToken);
+      throw new Error('Invalid refresh token received');
+    }
+    
     console.log('🔑 Access token (first 20 chars):', accessToken.substring(0, 20) + '...');
     console.log('🔄 Refresh token (first 20 chars):', refreshToken.substring(0, 20) + '...');
     
@@ -161,6 +179,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const data = await authAPI.login({ email, password });
       console.log('🔐 Login API response:', data);
 
+      // Validate response structure
+      if (!data.tokens || !data.tokens.access || !data.tokens.refresh) {
+        console.error('❌ Invalid response structure:', data);
+        throw new Error('Invalid response from server');
+      }
+
       // Store tokens in both state and AsyncStorage
       await get().setTokens(data.tokens.access, data.tokens.refresh);
       console.log('💾 Tokens stored, setting user...');
@@ -188,6 +212,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       });
       console.log('🔐 Signup API response:', data);
 
+      // Validate response structure
+      if (!data.tokens || !data.tokens.access || !data.tokens.refresh) {
+        console.error('❌ Invalid response structure:', data);
+        throw new Error('Invalid response from server');
+      }
+
       // Store tokens in both state and AsyncStorage
       await get().setTokens(data.tokens.access, data.tokens.refresh);
       console.log('💾 Tokens stored, setting user...');
@@ -210,6 +240,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const data = await authAPI.googleLogin({ id_token: idToken });
       console.log('✅ Google login successful:', data);
       console.log('👤 User data received:', data.user);
+
+      // Validate response structure
+      if (!data.tokens || !data.tokens.access || !data.tokens.refresh) {
+        console.error('❌ Invalid response structure:', data);
+        throw new Error('Invalid response from server');
+      }
 
       // Store tokens in both state and AsyncStorage
       console.log('💾 Storing tokens...');
@@ -263,6 +299,26 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({ user: updatedUser });
     } catch (error: any) {
       console.error('Profile update error:', error);
+      throw error;
+    }
+  },
+
+  saveUserData: async (data, step) => {
+    console.log('💾 Saving user data:', data, 'step:', step);
+    const { user } = get();
+    if (!user || !user.id) {
+      throw new Error('User not authenticated');
+    }
+
+    try {
+      // Update the user profile with new data
+      const updatedUser = await authAPI.updateProfile(data);
+      console.log('✅ User data saved successfully:', updatedUser);
+      
+      // Update local state
+      set({ user: updatedUser });
+    } catch (error: any) {
+      console.error('❌ Error saving user data:', error);
       throw error;
     }
   },

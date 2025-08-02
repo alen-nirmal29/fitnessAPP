@@ -15,7 +15,7 @@ import { defaultWorkouts } from '@/constants/workouts';
 export default function HomeScreen() {
   const { user } = useAuthStore();
   const { currentPlan, setCurrentPlan, loadUserPlans } = useWorkoutStore();
-  const { workoutStats, getTodayWorkouts } = useWorkoutSessionStore();
+  const { workoutStats, getTodayWorkouts, getWeeklyWorkouts } = useWorkoutSessionStore();
   const [showComparisonModal, setShowComparisonModal] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -56,11 +56,7 @@ export default function HomeScreen() {
   };
 
   const getWeeklyWorkoutsCount = () => {
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    return workoutStats.completedWorkouts.filter(
-      workout => new Date(workout.date) >= oneWeekAgo
-    ).length;
+    return getWeeklyWorkouts().length;
   };
 
   return (
@@ -186,8 +182,10 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   modelContainer: {
-    height: 200,
+    height: 250,
     marginBottom: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   statsContainer: {
     flexDirection: 'row',

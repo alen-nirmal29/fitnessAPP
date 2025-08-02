@@ -43,13 +43,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const accessToken = await AsyncStorage.getItem('accessToken');
       const refreshToken = await AsyncStorage.getItem('refreshToken');
       
-      console.log('🔍 Found tokens in storage:', {
-        accessToken: accessToken ? `${accessToken.substring(0, 20)}...` : 'None',
-        refreshToken: refreshToken ? `${refreshToken.substring(0, 20)}...` : 'None'
-      });
-      
-      // Validate tokens before using them
+      // Only log token details if we actually find valid tokens
       if (accessToken && accessToken !== 'None' && accessToken !== 'null' && accessToken.length > 10) {
+        console.log('🔍 Found valid tokens in storage');
         set({ accessToken, refreshToken });
         console.log('✅ Valid tokens restored from storage');
         
@@ -63,11 +59,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           await get().clearAuthData();
         }
       } else {
-        console.log('ℹ️ No valid tokens found, user not authenticated');
-        // Clear any invalid tokens
+        // Only log if we found invalid tokens that need cleaning
         if (accessToken === 'None' || accessToken === 'null') {
+          console.log('🧹 Cleaning up invalid tokens...');
           await get().clearAuthData();
         }
+        // Don't log "No valid tokens found" as this is normal for new users
       }
       
       set({ isInitialized: true });
@@ -112,13 +109,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   getAccessToken: async () => {
-    console.log('🔍 Getting access token from AsyncStorage...');
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      console.log('🔑 Retrieved token:', token ? `${token.substring(0, 20)}...` : 'No token found');
       
-      if (!token) {
-        console.error('❌ No access token found in AsyncStorage');
+      if (!token || token === 'None' || token === 'null') {
         return null;
       }
       
@@ -167,6 +161,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       await AsyncStorage.removeItem('refreshToken');
       await AsyncStorage.removeItem('auth-storage');
       await AsyncStorage.removeItem('auth-store-storage');
+      
+      // Reset Zustand state
+      set({
+        isAuthenticated: false,
+        user: null,
+        accessToken: undefined,
+        refreshToken: undefined,
+        error: null,
+      });
+      
       console.log('✅ Authentication data cleared');
     } catch (error) {
       console.error('❌ Error clearing authentication data:', error);

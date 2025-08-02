@@ -28,7 +28,43 @@ const getAuthHeaders = async () => {
   }
 };
 
-// Generic API request function with improved token handling
+// Token refresh function
+const refreshAccessToken = async () => {
+  try {
+    console.log('🔄 Attempting to refresh access token...');
+    const refreshToken = await AsyncStorage.getItem('refreshToken');
+    
+    if (!refreshToken) {
+      console.error('❌ No refresh token found');
+      throw new Error('No refresh token available');
+    }
+    
+    const response = await fetch(AUTH_ENDPOINTS.TOKEN_REFRESH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+    
+    if (!response.ok) {
+      console.error('❌ Token refresh failed:', response.status);
+      throw new Error('Token refresh failed');
+    }
+    
+    const data = await response.json();
+    console.log('✅ Token refresh successful');
+    
+    // Store the new access token
+    await AsyncStorage.setItem('accessToken', data.access);
+    console.log('💾 New access token stored');
+    
+    return data.access;
+  } catch (error) {
+    console.error('❌ Token refresh error:', error);
+    throw error;
+  }
+};
+
+// Generic API request function with token refresh
 const apiRequest = async (
   url: string,
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
@@ -65,6 +101,33 @@ const apiRequest = async (
     const response = await fetch(url, config);
     
     console.log('📥 Response status:', response.status);
+    
+    if (response.status === 401) {
+      console.log('🔄 Access token expired, attempting refresh...');
+      try {
+        const newAccessToken = await refreshAccessToken();
+        // Retry the request with new token
+        headers.Authorization = `Bearer ${newAccessToken}`;
+        const retryConfig = { ...config, headers };
+        const retryResponse = await fetch(url, retryConfig);
+        
+        if (!retryResponse.ok) {
+          const errorData = await retryResponse.json().catch(() => ({}));
+          console.error('❌ Retry request failed:', errorData);
+          throw new Error(errorData.error || `HTTP ${retryResponse.status}: ${retryResponse.statusText}`);
+        }
+        
+        const responseData = await retryResponse.json();
+        console.log('✅ Retry request successful:', responseData);
+        return responseData;
+      } catch (refreshError) {
+        console.error('❌ Token refresh failed, clearing auth data...');
+        // Clear auth data and throw error
+        await AsyncStorage.removeItem('accessToken');
+        await AsyncStorage.removeItem('refreshToken');
+        throw new Error('Authentication expired. Please login again.');
+      }
+    }
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

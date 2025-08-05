@@ -102,9 +102,9 @@ export default function Button({
 
     return (
       <>
-        {leftIcon && leftIcon}
+        {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
         <Text style={[getTextStyle(), getTextSizeStyle(), textStyle]}>{title}</Text>
-        {rightIcon && rightIcon}
+        {rightIcon && <View style={styles.iconContainer}>{rightIcon}</View>}
       </>
     );
   };
@@ -113,7 +113,7 @@ export default function Button({
     const sizeStyle = getSizeStyle();
     const gradientStyle = {
       ...styles.gradient,
-      borderRadius: sizeStyle.borderRadius || 12,
+      borderRadius: sizeStyle.borderRadius || 16,
     };
     
     return (
@@ -121,7 +121,7 @@ export default function Button({
         onPress={onPress}
         disabled={disabled || isLoading}
         style={[styles.button, sizeStyle, getButtonStyle(), disabled && styles.disabledButton, style]}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
         {...rest}
       >
         <LinearGradient
@@ -141,7 +141,7 @@ export default function Button({
       onPress={onPress}
       disabled={disabled || isLoading}
       style={[styles.button, getSizeStyle(), getButtonStyle(), disabled && styles.disabledButton, style]}
-      activeOpacity={0.8}
+      activeOpacity={0.85}
       {...rest}
     >
       {renderContent()}
@@ -151,28 +151,38 @@ export default function Button({
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
     minWidth: 120,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   gradient: {
-    borderRadius: 12,
+    borderRadius: 16,
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 8,
-    paddingVertical: 12, // set vertical padding for gradient background to 12
+    paddingVertical: 16,
   },
   primaryButton: {
     backgroundColor: 'transparent',
   },
   secondaryButton: {
     backgroundColor: Colors.dark.card,
+    borderWidth: 1,
+    borderColor: Colors.ui.border,
   },
   outlineButton: {
     backgroundColor: 'transparent',
@@ -187,27 +197,31 @@ const styles = StyleSheet.create({
   },
   smallButton: {
     borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    minHeight: 36,
+    minWidth: 80,
   },
   mediumButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 36, // increased from 32
-    minHeight: 56,
-    minWidth: 140, // increased from 120
-    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    minHeight: 48,
+    minWidth: 120,
+    borderRadius: 16,
   },
   largeButton: {
-    paddingVertical: 20,
-    paddingHorizontal: 48, // increased from 40
-    minHeight: 64,
-    minWidth: 180, // ensure a comfortable minWidth
-    borderRadius: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    minHeight: 56,
+    minWidth: 160,
+    borderRadius: 16,
   },
   squareButton: {
     paddingVertical: 16,
     paddingHorizontal: 16,
     minHeight: 56,
     minWidth: 56,
-    borderRadius: 12,
+    borderRadius: 16,
     aspectRatio: 1,
   },
   primaryText: {
@@ -215,7 +229,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryText: {
-    color: '#fff',
+    color: Colors.dark.text,
     fontWeight: '600',
   },
   outlineText: {
@@ -233,7 +247,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   largeText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
+  },
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

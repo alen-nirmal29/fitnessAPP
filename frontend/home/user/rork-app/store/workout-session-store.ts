@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Exercise } from '@/types/workout';
+import { workoutAPI } from '@/services/api';
 
 export type WorkoutSessionState = 'idle' | 'active' | 'resting' | 'completed';
 
@@ -59,6 +60,9 @@ interface WorkoutSessionStore {
   updateStats: () => void;
   getWeeklyWorkouts: () => number;
   getTodayWorkouts: () => CompletedWorkout[];
+  
+  // Database operations
+  saveWorkoutToDatabase: (session: WorkoutSession) => Promise<void>;
 }
 
 export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => ({
@@ -133,7 +137,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
     set({ currentSession: updatedSession });
   },
   
-  completeWorkout: () => {
+  completeWorkout: async () => {
     const { currentSession, completedWorkouts } = get();
     if (!currentSession) return;
     
@@ -148,6 +152,15 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       exercisesCompleted: currentSession.completedExercises.length,
       totalExercises: currentSession.exercises.length,
     };
+    
+    // Save to database
+    try {
+      await get().saveWorkoutToDatabase(currentSession);
+      console.log('✅ Workout saved to database successfully');
+    } catch (error) {
+      console.error('❌ Failed to save workout to database:', error);
+      // Continue with local state even if database save fails
+    }
     
     set({
       currentSession: null,
@@ -265,5 +278,73 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
     return completedWorkouts.filter(
       workout => workout.date >= today && workout.date < tomorrow
     );
+  },
+  
+  saveWorkoutToDatabase: async (session) => {
+    try {
+      console.log('💾 Saving workout session to database...', session);
+      
+      // Prepare the session data for the API
+      const sessionData = {
+        plan_id: session.id,
+        day_id: session.workoutName,
+        status: 'completed',
+        started_at: session.startTime.toISOString(),
+        completed_at: new Date().toISOString(),
+        duration: Math.round((new Date().getTime() - session.startTime.getTime()) / 60000),
+        total_exercises: session.exercises.length,
+        completed_exercises: session.completedExercises.length,
+        notes: '',
+        rating: null
+      };
+
+      // Create the workout session
+      const savedSession = await workoutAPI.createSession(sessionData);
+      console.log('✅ Workout session created:', savedSession);
+
+      // Save exercise sets if there are any
+      if (session.exercises.length > 0) {
+        const exerciseSetsData = session.exercises.map((exercise, index) => ({
+          session_id: savedSession.id,
+          exercise_id: exercise.id || `exercise-${index}`,
+          set_number: index + 1,
+          reps_completed: exercise.reps,
+          weight_used: 0, // Default weight
+          duration: 0, // Default duration
+          rest_time: exercise.restTime || 60,
+          notes: '',
+          difficulty_rating: null
+        }));
+
+        // Save each exercise set
+        for (const setData of exerciseSetsData) {
+          try {
+            await workoutAPI.createExerciseSet(setData);
+            console.log('✅ Exercise set saved:', setData);
+          } catch (setError) {
+            console.error('❌ Failed to save exercise set:', setError);
+            // Continue with other sets even if one fails
+          }
+        }
+      }
+
+      // Save progress data
+      const progressData = {
+        session_id: savedSession.id,
+        workout_type: session.workoutName,
+        duration_minutes: sessionData.duration,
+        calories_burned: Math.round(sessionData.duration * 8), // Rough estimate
+        exercises_completed: session.completedExercises.length,
+        notes: ''
+      };
+
+      await workoutAPI.saveProgress(progressData);
+      console.log('✅ Workout progress saved:', progressData);
+      
+      console.log('✅ Workout session and all data saved to database successfully');
+    } catch (error) {
+      console.error('❌ Failed to save workout session:', error);
+      throw new Error(`Failed to save workout: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   },
 }));

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Platform, SafeAreaView } from 'react-native';
 import { ScrollView as RNScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { MessageSquare } from 'lucide-react-native';
+import { MessageSquare, Sparkles, Clock, Target } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
@@ -55,102 +55,134 @@ export default function PlanGeneratorScreen() {
     setDuration(selected);
   };
 
+  const getDurationLabel = (value: string) => {
+    switch (value) {
+      case '1_month': return '1 Month';
+      case '3_month': return '3 Months';
+      case '6_month': return '6 Months';
+      default: return '1 Month';
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <ScrollView 
           style={styles.scrollView}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 }]} // add extra bottom padding
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Header Section */}
           <View style={styles.header}>
-            <Text style={styles.title}>Generate Workout Plan</Text>
+            <View style={styles.titleContainer}>
+              <Sparkles size={28} color={Colors.dark.gradient.primary} style={styles.titleIcon} />
+              <Text style={styles.title}>AI Workout Generator</Text>
+            </View>
             <Text style={styles.subtitle}>
-              Our AI will create a personalized workout plan based on your goals and preferences
+              Create a personalized workout plan tailored to your body composition, fitness level, and goals
             </Text>
           </View>
 
+          {/* How it works card */}
           <Card style={styles.infoCard}>
-            <Text style={styles.infoTitle}>How it works</Text>
+            <View style={styles.infoHeader}>
+              <Target size={20} color={Colors.dark.accent} />
+              <Text style={styles.infoTitle}>How AI Works</Text>
+            </View>
             <Text style={styles.infoText}>
-              We'll use your profile information, body measurements, and fitness goals to create a
-              customized workout plan. You can also provide additional details below.
+              Our advanced AI analyzes your profile data including age, gender, body measurements, 
+              fitness level, and specific goals to create a customized workout plan that adapts to your needs.
             </Text>
           </Card>
 
-          <View style={styles.form}>
-            <Text style={styles.label}>Plan Duration</Text>
-            <RNScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.durationContainer}
-            >
-              <Button
-                title="1 Month"
-                onPress={() => handleDurationSelect('1_month')}
-                variant={duration === '1_month' ? 'primary' : 'outline'}
-                style={styles.durationButton}
-                textStyle={{ textAlign: 'center', fontSize: 14 }}
-              />
-              <Button
-                title="3 Months"
-                onPress={() => handleDurationSelect('3_month')}
-                variant={duration === '3_month' ? 'primary' : 'outline'}
-                style={styles.durationButton}
-                textStyle={{ textAlign: 'center', fontSize: 14 }}
-              />
-              <Button
-                title="6 Months"
-                onPress={() => handleDurationSelect('6_month')}
-                variant={duration === '6_month' ? 'primary' : 'outline'}
-                style={styles.durationButton}
-                textStyle={{ textAlign: 'center', fontSize: 14 }}
-              />
-            </RNScrollView>
+          {/* Plan Duration Section */}
+          <Card style={styles.durationCard}>
+            <View style={styles.sectionHeader}>
+              <Clock size={20} color={Colors.dark.accent} />
+              <Text style={styles.sectionTitle}>Plan Duration</Text>
+            </View>
+            <Text style={styles.sectionSubtitle}>
+              Choose how long you want your workout plan to last
+            </Text>
+            
+            <View style={styles.durationContainer}>
+              {['1_month', '3_month', '6_month'].map((option) => (
+                <Button
+                  key={option}
+                  title={getDurationLabel(option)}
+                  onPress={() => handleDurationSelect(option)}
+                  variant={duration === option ? 'primary' : 'outline'}
+                  size="medium"
+                  style={[
+                    styles.durationButton,
+                    duration === option && styles.selectedDurationButton
+                  ]}
+                  textStyle={[
+                    styles.durationButtonText,
+                    duration === option && styles.selectedDurationButtonText
+                  ]}
+                />
+              ))}
+            </View>
+          </Card>
 
+          {/* Additional Details Section */}
+          <Card style={styles.detailsCard}>
+            <View style={styles.sectionHeader}>
+              <MessageSquare size={20} color={Colors.dark.accent} />
+              <Text style={styles.sectionTitle}>Additional Details</Text>
+            </View>
+            <Text style={styles.sectionSubtitle}>
+              Help us create an even more personalized plan
+            </Text>
+            
             <Input
-              label="Additional Details (Optional)"
-              placeholder="E.g., I have access to a gym, I prefer morning workouts, etc."
+              placeholder="E.g., I have access to a gym, I prefer morning workouts, I have knee issues, etc."
               value={message}
               onChangeText={setMessage}
               multiline
               numberOfLines={Platform.OS === 'ios' ? 0 : 4}
               style={styles.messageInput}
               inputStyle={styles.textArea}
-              leftIcon={<MessageSquare size={20} color={Colors.dark.subtext} />}
             />
-          </View>
+          </Card>
 
+          {/* Error Display */}
           {error && (
-            <Text style={styles.errorText}>
-              {error}
-            </Text>
+            <Card style={styles.errorCard}>
+              <Text style={styles.errorText}>
+                {error}
+              </Text>
+            </Card>
           )}
 
+          {/* Generating State */}
           {isGenerating && (
-            <View style={styles.generatingContainer}>
-              <ActivityIndicator size="large" color={Colors.dark.accent} />
+            <Card style={styles.generatingCard}>
+              <ActivityIndicator size="large" color={Colors.dark.gradient.primary} />
+              <Text style={styles.generatingTitle}>Creating Your Plan</Text>
               <Text style={styles.generatingText}>
-                Generating your personalized workout plan...
+                Our AI is analyzing your profile and crafting a personalized workout plan...
               </Text>
-            </View>
+            </Card>
           )}
         </ScrollView>
 
         {/* Fixed footer for action buttons */}
-        <View style={[styles.footer, { position: 'absolute', left: 0, right: 0, bottom: 0 }]}> 
+        <View style={styles.footer}>
           <BackButton
             onPress={handleBack}
-            // style={styles.backButton} // Remove style prop to use default compact BackButton
+            style={styles.backButton}
           />
           <Button
-            title="Generate Plan"
+            title="Generate My Plan"
             onPress={handleGeneratePlan}
             variant="primary"
             size="large"
             style={styles.generateButton}
             isLoading={isLoading || isGenerating}
+            leftIcon={<Sparkles size={20} color="#fff" />}
           />
         </View>
       </View>
@@ -170,86 +202,147 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 24,
-    paddingBottom: 24,
+    padding: 20,
+    paddingBottom: 120,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 32,
+    alignItems: 'center',
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  titleIcon: {
+    marginRight: 12,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: Colors.dark.text,
-    marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: Colors.dark.subtext,
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 20,
   },
   infoCard: {
     marginBottom: 24,
+    padding: 20,
+  },
+  infoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   infoTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: Colors.dark.text,
-    marginBottom: 8,
+    marginLeft: 8,
   },
   infoText: {
     fontSize: 14,
     color: Colors.dark.subtext,
-    lineHeight: 20,
+    lineHeight: 22,
   },
-  form: {
+  durationCard: {
     marginBottom: 24,
+    padding: 20,
   },
-  label: {
-    fontSize: 16,
+  detailsCard: {
+    marginBottom: 24,
+    padding: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: Colors.dark.text,
-    fontWeight: '500',
+    marginLeft: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: Colors.dark.subtext,
+    marginBottom: 16,
+    lineHeight: 20,
   },
   durationContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
-    gap: 8,
+    gap: 12,
   },
   durationButton: {
-    width: 96, // slightly larger width
-    minWidth: 96,
-    maxWidth: 96,
-    minHeight: 38, // slightly larger height
-    alignSelf: 'center',
-    marginHorizontal: 4,
-    paddingVertical: 6, // slightly more vertical padding
-    paddingHorizontal: 0,
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 12,
+  },
+  selectedDurationButton: {
+    transform: [{ scale: 1.02 }],
+  },
+  durationButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  selectedDurationButtonText: {
+    fontWeight: '700',
   },
   messageInput: {
     height: 120,
+    marginTop: 8,
   },
   textArea: {
     height: 120,
     textAlignVertical: 'top',
-    paddingTop: 12,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  errorCard: {
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    borderColor: Colors.dark.error,
+    borderWidth: 1,
   },
   errorText: {
     color: Colors.dark.error,
-    marginBottom: 16,
-  },
-  generatingContainer: {
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  generatingText: {
-    marginTop: 16,
-    color: Colors.dark.text,
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
   },
+  generatingCard: {
+    marginBottom: 24,
+    padding: 32,
+    alignItems: 'center',
+  },
+  generatingTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.dark.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  generatingText: {
+    color: Colors.dark.subtext,
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   footer: {
-    padding: 24,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
     backgroundColor: Colors.dark.background,
     borderTopWidth: 1,
     borderTopColor: Colors.ui.border,

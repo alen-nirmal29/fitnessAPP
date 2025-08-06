@@ -162,7 +162,8 @@ class WorkoutSession(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"{self.user.email} - {self.workout_day.name} - {self.status}"
+        workout_day_name = self.workout_day.name if self.workout_day else "No workout day"
+        return f"{self.user.email} - {workout_day_name} - {self.status}"
     
     class Meta:
         db_table = 'workout_sessions'

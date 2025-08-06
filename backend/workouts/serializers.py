@@ -39,7 +39,7 @@ class WorkoutPlanSerializer(serializers.ModelSerializer):
 
 class ExerciseSetSerializer(serializers.ModelSerializer):
     exercise = ExerciseSerializer(read_only=True)
-    exercise_id = serializers.PrimaryKeyRelatedField(queryset=Exercise.objects.all(), source='exercise', write_only=True)
+    exercise_id = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = ExerciseSet
@@ -62,6 +62,43 @@ class ExerciseSetSerializer(serializers.ModelSerializer):
         if 'reps_completed' not in attrs:
             attrs['reps_completed'] = 0
             logger.info(f"📝 Setting default reps_completed: 0")
+        
+        # Handle exercise_id - get or create exercise
+        from .models import Exercise
+        exercise_id = attrs.pop('exercise_id', None)
+        
+        if exercise_id:
+            try:
+                # Try to get by ID (could be integer or string)
+                try:
+                    # First try as integer ID
+                    exercise = Exercise.objects.get(id=int(exercise_id))
+                    logger.info(f"📝 Found exercise by ID: {exercise.name}")
+                except (ValueError, Exercise.DoesNotExist):
+                    # If that fails, try to get by name
+                    logger.info(f"🔍 Looking for exercise by name: {exercise_id}")
+                    exercise = Exercise.objects.filter(name__icontains=exercise_id).first()
+                    
+                    # If still not found, create a default exercise
+                    if not exercise:
+                        logger.info(f"📝 Creating new exercise with name: Exercise {exercise_id}")
+                        exercise = Exercise.objects.create(
+                            name=f"Exercise {exercise_id}",
+                            description="Auto-created exercise",
+                            muscle_group="other"
+                        )
+                        logger.info(f"✅ Created new exercise: {exercise.name} with ID: {exercise.id}")
+                    else:
+                        logger.info(f"📝 Found exercise by name: {exercise.name}")
+                
+                attrs['exercise'] = exercise
+                logger.info(f"📝 Using exercise: {exercise.name} (ID: {exercise.id})")
+            except Exception as e:
+                logger.error(f"❌ Error processing exercise_id: {str(e)}")
+                raise serializers.ValidationError({"exercise_id": [f"Invalid exercise ID: {str(e)}"]})  
+        else:
+            logger.error(f"❌ Missing exercise_id in request data")
+            raise serializers.ValidationError({"exercise_id": ["This field is required."]})  
         
         logger.info(f"✅ Exercise set validation passed: {attrs}")
         return attrs
@@ -107,4 +144,4 @@ class WorkoutSessionSerializer(serializers.ModelSerializer):
             logger.info(f"📝 No workout day provided - this is optional")
         
         logger.info(f"✅ Workout session validation passed: {attrs}")
-        return attrs 
+        return attrs

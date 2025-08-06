@@ -289,8 +289,8 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
         plan_id: session.id,
         day_id: session.workoutName,
         status: 'completed',
-        started_at: session.startTime.toISOString(),
-        completed_at: new Date().toISOString(),
+        started_at: session.startTime.toISOString().split('T')[0], // Format as YYYY-MM-DD
+        completed_at: new Date().toISOString().split('T')[0], // Format as YYYY-MM-DD
         duration: Math.round((new Date().getTime() - session.startTime.getTime()) / 60000),
         total_exercises: session.exercises.length,
         completed_exercises: session.completedExercises.length,
@@ -305,7 +305,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       // Save exercise sets if there are any
       if (session.exercises.length > 0) {
         const exerciseSetsData = session.exercises.map((exercise, index) => ({
-          session_id: savedSession.id,
+          session: savedSession.id, // Use session instead of session_id
           exercise_id: exercise.id || `exercise-${index}`,
           set_number: index + 1,
           reps_completed: exercise.reps,
@@ -335,7 +335,8 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
         duration_minutes: sessionData.duration,
         calories_burned: Math.round(sessionData.duration * 8), // Rough estimate
         exercises_completed: session.completedExercises.length,
-        notes: ''
+        notes: '',
+        date: new Date().toISOString().split('T')[0], // Format as YYYY-MM-DD
       };
 
       await workoutAPI.saveProgress(progressData);

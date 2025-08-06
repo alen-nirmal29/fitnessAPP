@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Animated, Dimensions } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Dumbbell, Award, TrendingUp, Calendar, Clock, Target, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Body3DModel from '@/components/Body3DModel';
@@ -32,6 +32,99 @@ export default function HomeScreen() {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  
+  // Load workout history from backend when component mounts
+  React.useEffect(() => {
+    const loadWorkoutHistory = async () => {
+      try {
+        console.log('📊 Loading workout history for home page...');
+        const { workoutAPI } = await import('@/services/api');
+        const history = await workoutAPI.getHistory();
+        console.log('✅ Workout history loaded for home:', history);
+        
+        // Update the session store with the loaded history
+        const { useWorkoutSessionStore } = await import('@/store/workout-session-store');
+        const sessionStore = useWorkoutSessionStore.getState();
+        
+        // Convert backend history to session store format
+        const formattedHistory = history.results?.map((workout: any) => ({
+          id: workout.id?.toString() || `workout-${Date.now()}`,
+          workoutName: workout.workout_type || 'Workout',
+          exercises: [],
+          currentExerciseIndex: 0,
+          currentSet: 1,
+          totalSets: 1,
+          startTime: new Date(workout.started_at || workout.date),
+          endTime: new Date(workout.completed_at || workout.date),
+          completedExercises: [],
+          state: 'completed' as const,
+          timerSeconds: 0,
+          isRestTimer: false,
+          date: workout.date || workout.started_at,
+          duration: workout.duration_minutes || 0,
+          exercisesCompleted: workout.exercises_completed || 0,
+          caloriesBurned: workout.calories_burned || 0
+        })) || [];
+        
+        console.log('✅ Formatted workout history for home:', formattedHistory);
+        
+        // Update the session store with the loaded history
+        sessionStore.completedWorkouts = formattedHistory;
+        
+        // Refresh workout stats based on the loaded history
+        sessionStore.refreshWorkoutStats();
+        
+      } catch (error) {
+        console.error('❌ Failed to load workout history for home:', error);
+      }
+    };
+    
+    loadWorkoutHistory();
+  }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const refreshData = async () => {
+        try {
+          console.log('🔄 Refreshing workout data on home screen focus...');
+          const { workoutAPI } = await import('@/services/api');
+          const history = await workoutAPI.getHistory();
+          
+          const { useWorkoutSessionStore } = await import('@/store/workout-session-store');
+          const sessionStore = useWorkoutSessionStore.getState();
+          
+          const formattedHistory = history.results?.map((workout: any) => ({
+            id: workout.id?.toString() || `workout-${Date.now()}`,
+            workoutName: workout.workout_type || 'Workout',
+            exercises: [],
+            currentExerciseIndex: 0,
+            currentSet: 1,
+            totalSets: 1,
+            startTime: new Date(workout.started_at || workout.date),
+            endTime: new Date(workout.completed_at || workout.date),
+            completedExercises: [],
+            state: 'completed' as const,
+            timerSeconds: 0,
+            isRestTimer: false,
+            date: workout.date || workout.started_at,
+            duration: workout.duration_minutes || 0,
+            exercisesCompleted: workout.exercises_completed || 0,
+            caloriesBurned: workout.calories_burned || 0
+          })) || [];
+          
+          sessionStore.completedWorkouts = formattedHistory;
+          sessionStore.refreshWorkoutStats();
+          console.log('✅ Refreshed workout data on home screen focus');
+        } catch (error) {
+          console.error('❌ Failed to refresh workout data:', error);
+        }
+      };
+      
+      refreshData();
+    }, [])
+  );
+
   React.useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -118,7 +211,7 @@ export default function HomeScreen() {
         <View style={styles.statsContainer}>
           <Card style={styles.statCard}>
             <View style={styles.statContent}>
-              <Dumbbell size={24} color={Colors.primary} />
+              <Dumbbell size={24} color={Colors.dark.accent} />
               <View style={styles.statText}>
                 <Text style={styles.statNumber}>{getTodayWorkoutsCount()}</Text>
                 <Text style={styles.statLabel}>Today's Workouts</Text>
@@ -128,7 +221,7 @@ export default function HomeScreen() {
 
           <Card style={styles.statCard}>
             <View style={styles.statContent}>
-              <Calendar size={24} color={Colors.success} />
+              <Calendar size={24} color={Colors.dark.gradient.primary} />
               <View style={styles.statText}>
                 <Text style={styles.statNumber}>{getWeeklyWorkoutsCount()}</Text>
                 <Text style={styles.statLabel}>This Week</Text>
@@ -150,11 +243,11 @@ export default function HomeScreen() {
             <Text style={styles.planDescription}>{currentPlan.description || 'No description available'}</Text>
             <View style={styles.planStats}>
               <View style={styles.planStat}>
-                <Clock size={16} color={Colors.textSecondary} />
+                <Clock size={16} color={Colors.dark.subtext} />
                 <Text style={styles.planStatText}>{currentPlan.duration || 'Unknown duration'}</Text>
               </View>
               <View style={styles.planStat}>
-                <Target size={16} color={Colors.textSecondary} />
+                <Target size={16} color={Colors.dark.subtext} />
                 <Text style={styles.planStatText}>{(currentPlan.specificGoal || 'Unknown goal').replace('_', ' ')}</Text>
               </View>
             </View>
@@ -188,7 +281,7 @@ export default function HomeScreen() {
             style={styles.actionButton}
             onPress={() => router.push('/workout/plan-generator')}
           >
-            <Award size={24} color={Colors.primary} />
+            <Award size={24} color={Colors.dark.accent} />
             <Text style={styles.actionText}>Generate Plan</Text>
           </TouchableOpacity>
 
@@ -196,7 +289,7 @@ export default function HomeScreen() {
             style={styles.actionButton}
             onPress={() => router.push('/(tabs)/progress')}
           >
-            <TrendingUp size={24} color={Colors.success} />
+            <TrendingUp size={24} color={Colors.dark.gradient.primary} />
             <Text style={styles.actionText}>Track Progress</Text>
           </TouchableOpacity>
         </View>
@@ -215,7 +308,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.dark.background,
   },
   content: {
     padding: 20,
@@ -229,12 +322,12 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: Colors.dark.text,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: Colors.dark.subtext,
   },
   modelContainer: {
     height: 250,
@@ -261,11 +354,11 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: Colors.dark.text,
   },
   statLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: Colors.dark.subtext,
   },
   planCard: {
     padding: 20,
@@ -280,22 +373,22 @@ const styles = StyleSheet.create({
   planTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: Colors.dark.text,
   },
   changePlanText: {
     fontSize: 14,
-    color: Colors.primary,
+    color: Colors.dark.accent,
     fontWeight: 'bold',
   },
   planName: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: Colors.dark.text,
     marginBottom: 8,
   },
   planDescription: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: Colors.dark.subtext,
     marginBottom: 16,
     lineHeight: 20,
   },
@@ -311,7 +404,7 @@ const styles = StyleSheet.create({
   planStatText: {
     marginLeft: 6,
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: Colors.dark.subtext,
   },
   startWorkoutButton: {
     marginTop: 8,
@@ -323,7 +416,7 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.dark.card,
     padding: 20,
     borderRadius: 12,
     alignItems: 'center',
@@ -332,7 +425,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 14,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: Colors.dark.text,
   },
   progressCard: {
     padding: 20,
@@ -340,12 +433,12 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.text,
+    color: Colors.dark.text,
     marginBottom: 12,
   },
   progressText: {
     marginTop: 8,
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: Colors.dark.subtext,
   },
 });

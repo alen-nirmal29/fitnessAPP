@@ -107,26 +107,35 @@ def save_progress_entry(request):
         logger.info(f"💾 Saving progress entry for user {user.email}")
         logger.info(f"📦 Progress data: {data}")
         
-        # Create progress entry
-        progress_entry = ProgressEntry.objects.create(
+        # Create or update progress entry
+        progress_entry, created = ProgressEntry.objects.get_or_create(
             user=user,
             date=data.get('date'),
-            weight=data.get('weight'),
-            chest=data.get('chest'),
-            neck=data.get('neck'),
-            waist=data.get('waist'),
-            left_arm=data.get('left_arm'),
-            right_arm=data.get('right_arm'),
-            left_thigh=data.get('left_thigh'),
-            right_thigh=data.get('right_thigh'),
-            shoulders=data.get('shoulders'),
-            hips=data.get('hips'),
-            calves=data.get('calves'),
-            body_fat=data.get('body_fat'),
-            muscle_mass=data.get('muscle_mass'),
-            bmi=data.get('bmi'),
-            notes=data.get('notes', '')
+            defaults={
+                'weight': data.get('weight'),
+                'chest': data.get('chest'),
+                'neck': data.get('neck'),
+                'waist': data.get('waist'),
+                'left_arm': data.get('left_arm'),
+                'right_arm': data.get('right_arm'),
+                'left_thigh': data.get('left_thigh'),
+                'right_thigh': data.get('right_thigh'),
+                'shoulders': data.get('shoulders'),
+                'hips': data.get('hips'),
+                'calves': data.get('calves'),
+                'body_fat': data.get('body_fat'),
+                'muscle_mass': data.get('muscle_mass'),
+                'bmi': data.get('bmi'),
+                'notes': data.get('notes', '')
+            }
         )
+        
+        # Update existing entry if found
+        if not created:
+            for field, value in data.items():
+                if field != 'date' and field != 'user' and hasattr(progress_entry, field):
+                    setattr(progress_entry, field, value)
+            progress_entry.save()
         
         logger.info(f"✅ Progress entry saved successfully: {progress_entry.id}")
         return Response({

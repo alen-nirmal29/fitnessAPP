@@ -1,6 +1,7 @@
 import React, { useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
 import { TrendingUp, Calendar, Scale, Ruler } from 'lucide-react-native';
+import { useFocusEffect } from 'expo-router';
 import { SpecificGoal } from '@/types/user';
 import Colors from '@/constants/colors';
 import Card from '@/components/Card';
@@ -14,10 +15,103 @@ import LottieView from 'lottie-react-native';
 export default function ProgressScreen() {
   const { user } = useAuthStore();
   const { workoutStats, completedWorkouts } = useWorkoutSessionStore();
-  const { currentPlan, workoutProgress, progressMeasurements, generateProgressMeasurements } = useWorkoutStore();
+  const { currentPlan, workoutProgress, progressMeasurements, generateProgressMeasurements, loadUserPlans } = useWorkoutStore();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  
+  // Load workout history from backend when component mounts
+  React.useEffect(() => {
+    const loadWorkoutHistory = async () => {
+      try {
+        console.log('📊 Loading workout history from backend...');
+        const { workoutAPI } = await import('@/services/api');
+        const history = await workoutAPI.getHistory();
+        console.log('✅ Workout history loaded:', history);
+        
+        // Update the session store with the loaded history
+        const { useWorkoutSessionStore } = await import('@/store/workout-session-store');
+        const sessionStore = useWorkoutSessionStore.getState();
+        
+        // Convert backend history to session store format
+        const formattedHistory = history.results?.map((workout: any) => ({
+          id: workout.id?.toString() || `workout-${Date.now()}`,
+          workoutName: workout.workout_type || 'Workout',
+          exercises: [],
+          currentExerciseIndex: 0,
+          currentSet: 1,
+          totalSets: 1,
+          startTime: new Date(workout.started_at || workout.date),
+          endTime: new Date(workout.completed_at || workout.date),
+          completedExercises: [],
+          state: 'completed' as const,
+          timerSeconds: 0,
+          isRestTimer: false,
+          date: workout.date || workout.started_at,
+          duration: workout.duration_minutes || 0,
+          exercisesCompleted: workout.exercises_completed || 0,
+          caloriesBurned: workout.calories_burned || 0
+        })) || [];
+        
+        console.log('✅ Formatted workout history:', formattedHistory);
+        
+        // Update the session store with the loaded history
+        sessionStore.completedWorkouts = formattedHistory;
+        
+        // Refresh workout stats based on the loaded history
+        sessionStore.refreshWorkoutStats();
+        
+      } catch (error) {
+        console.error('❌ Failed to load workout history:', error);
+      }
+    };
+    
+    loadWorkoutHistory();
+  }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const refreshData = async () => {
+        try {
+          console.log('🔄 Refreshing workout data on progress screen focus...');
+          const { workoutAPI } = await import('@/services/api');
+          const history = await workoutAPI.getHistory();
+          
+          const { useWorkoutSessionStore } = await import('@/store/workout-session-store');
+          const sessionStore = useWorkoutSessionStore.getState();
+          
+          const formattedHistory = history.results?.map((workout: any) => ({
+            id: workout.id?.toString() || `workout-${Date.now()}`,
+            workoutName: workout.workout_type || 'Workout',
+            exercises: [],
+            currentExerciseIndex: 0,
+            currentSet: 1,
+            totalSets: 1,
+            startTime: new Date(workout.started_at || workout.date),
+            endTime: new Date(workout.completed_at || workout.date),
+            completedExercises: [],
+            state: 'completed' as const,
+            timerSeconds: 0,
+            isRestTimer: false,
+            date: workout.date || workout.started_at,
+            duration: workout.duration_minutes || 0,
+            exercisesCompleted: workout.exercises_completed || 0,
+            caloriesBurned: workout.calories_burned || 0
+          })) || [];
+          
+          sessionStore.completedWorkouts = formattedHistory;
+          sessionStore.refreshWorkoutStats();
+          console.log('✅ Refreshed workout data on progress screen focus');
+        } catch (error) {
+          console.error('❌ Failed to refresh workout data:', error);
+        }
+      };
+      
+      refreshData();
+    }, [])
+  );
+
   React.useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -174,9 +268,13 @@ export default function ProgressScreen() {
 
   // Calculate strength progress for specific exercises
   const getExerciseProgress = (exerciseName: string, initialWeight: number) => {
-    const strengthGain = workoutStats.totalWorkouts * 2.5; // 2.5kg per workout
+    // Use strengthIncrease percentage to calculate weight gain
+    const strengthGainPercentage = workoutStats.strengthIncrease / 100;
+    const strengthGain = initialWeight * strengthGainPercentage;
     const currentWeight = initialWeight + strengthGain;
-    const progress = strengthGain / (initialWeight * 0.5); // 50% increase goal
+    
+    // Calculate progress toward a 50% increase goal
+    const progress = strengthGainPercentage / 0.5; // 50% increase goal
     
     return {
       initial: initialWeight,
@@ -371,11 +469,13 @@ export default function ProgressScreen() {
                 <View style={styles.recentWorkoutHeader}>
                   <Text style={styles.recentWorkoutName}>{workout.workoutName}</Text>
                   <Text style={styles.recentWorkoutDate}>
-                    {new Date(workout.date).toLocaleDateString()}
+                    {new Date(workout.date || workout.startTime).toLocaleDateString()}
                   </Text>
                 </View>
                 <Text style={styles.recentWorkoutStats}>
-                  {workout.duration} min • {workout.exercisesCompleted} exercises • {workout.caloriesBurned} cal
+                  {workout.duration || Math.round((workout.endTime?.getTime() - workout.startTime.getTime()) / 60000) || 0} min • 
+                  {workout.exercisesCompleted || workout.completedExercises?.length || 0} exercises • 
+                  {workout.caloriesBurned || Math.round((workout.duration || 0) * 5)} cal
                 </Text>
               </View>
             ))}

@@ -111,6 +111,14 @@ class ExerciseSetListCreateView(generics.ListCreateAPIView):
         logger.info(f"👤 User: {request.user.email}")
         logger.info(f"📦 Request data: {request.data}")
         
+        # Validate that exercise_id is provided
+        if 'exercise_id' not in request.data or not request.data['exercise_id']:
+            logger.error(f"❌ Missing exercise_id in request data")
+            return Response(
+                {"exercise_id": ["This field may not be null or empty."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         try:
             response = super().create(request, *args, **kwargs)
             logger.info(f"✅ Exercise set created successfully: {response.data}")
@@ -210,17 +218,61 @@ def save_workout_progress(request):
         # Save exercise sets
         exercise_sets = data.get('exercise_sets', [])
         for set_data in exercise_sets:
-            ExerciseSet.objects.create(
+            # Handle exercise_id - get or create exercise
+            exercise_id = set_data.get('exercise_id')
+            exercise = None
+            
+            if exercise_id:
+                try:
+                    # Try to get by ID (could be integer or string)
+                    try:
+                        # First try as integer ID
+                        exercise = Exercise.objects.get(id=int(exercise_id))
+                        logger.info(f"📝 Found exercise by ID: {exercise.name}")
+                    except (ValueError, Exercise.DoesNotExist):
+                        # If that fails, try to get by name
+                        logger.info(f"🔍 Looking for exercise by name: {exercise_id}")
+                        exercise = Exercise.objects.filter(name__icontains=exercise_id).first()
+                        
+                        # If still not found, create a default exercise
+                        if not exercise:
+                            logger.info(f"📝 Creating new exercise with name: Exercise {exercise_id}")
+                            exercise = Exercise.objects.create(
+                                name=f"Exercise {exercise_id}",
+                                description="Auto-created exercise",
+                                muscle_group="other"
+                            )
+                            logger.info(f"✅ Created new exercise: {exercise.name} with ID: {exercise.id}")
+                        else:
+                            logger.info(f"📝 Found exercise by name: {exercise.name}")
+                except Exception as e:
+                    logger.error(f"❌ Error processing exercise_id: {str(e)}")
+                    continue  # Skip this set if exercise can't be found or created
+            else:
+                logger.error(f"❌ Missing exercise_id in set data")
+                continue  # Skip this set
+            
+            # Check if the exercise set already exists
+            exercise_set, created = ExerciseSet.objects.get_or_create(
                 session=session,
-                exercise_id=set_data['exercise_id'],
+                exercise=exercise,
                 set_number=set_data['set_number'],
-                reps_completed=set_data['reps_completed'],
-                weight_used=set_data.get('weight_used'),
-                duration=set_data.get('duration'),
-                rest_time=set_data.get('rest_time'),
-                notes=set_data.get('notes', ''),
-                difficulty_rating=set_data.get('difficulty_rating')
+                defaults={
+                    'reps_completed': set_data['reps_completed'],
+                    'weight_used': set_data.get('weight_used'),
+                    'duration': set_data.get('duration'),
+                    'rest_time': set_data.get('rest_time'),
+                    'notes': set_data.get('notes', ''),
+                    'difficulty_rating': set_data.get('difficulty_rating')
+                }
             )
+            
+            # Update existing exercise set if found
+            if not created:
+                for field, value in set_data.items():
+                    if field not in ['session', 'exercise_id', 'set_number'] and hasattr(exercise_set, field):
+                        setattr(exercise_set, field, value)
+                exercise_set.save()
         
         logger.info(f"✅ Workout progress saved successfully")
         return Response({'message': 'Workout progress saved successfully', 'session_id': session.id})

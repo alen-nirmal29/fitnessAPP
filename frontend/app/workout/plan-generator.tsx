@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 120,
+    paddingBottom: 140, // Increased padding to account for footer
   },
   header: {
     marginBottom: 32,

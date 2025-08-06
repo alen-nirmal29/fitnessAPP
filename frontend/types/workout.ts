@@ -1,3 +1,5 @@
+import { SpecificGoal } from './user';
+
 export type WorkoutDifficulty = 'beginner' | 'intermediate' | 'advanced';
 
 export type WorkoutDuration = '1_month' | '3_month' | '6_month' | '1_year';
@@ -28,7 +30,7 @@ export type WorkoutPlan = {
   description: string;
   difficulty: WorkoutDifficulty;
   duration: WorkoutDuration;
-  specificGoal: string;
+  specificGoal: SpecificGoal;
   schedule: WorkoutDay[];
   isAIGenerated: boolean;
 };

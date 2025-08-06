@@ -90,7 +90,7 @@ export default function PlanSelectionScreen() {
         <View style={styles.plansContainer}>
           <View style={styles.sectionHeader}>
             <Users size={20} color={Colors.dark.accent} />
-            <Text style={styles.sectionTitle}>AI Recommended Plans</Text>
+            <Text style={styles.sectionTitle}>Recommended Plans</Text>
           </View>
           
           <Card style={styles.recommendationCard}>
@@ -102,9 +102,9 @@ export default function PlanSelectionScreen() {
           {isLoading ? (
             <Card style={styles.loadingCard}>
               <ActivityIndicator color={Colors.dark.gradient.primary} size="large" />
-              <Text style={styles.loadingTitle}>AI Analysis in Progress</Text>
+              <Text style={styles.loadingTitle}>Loading Recommendations</Text>
               <Text style={styles.loadingText}>
-                Our AI is analyzing your profile and creating personalized recommendations...
+                Finding the best workout plans for your profile...
               </Text>
             </Card>
           ) : recommendedPlans.length > 0 ? (
@@ -120,7 +120,7 @@ export default function PlanSelectionScreen() {
             <Card style={styles.emptyCard}>
               <Text style={styles.emptyTitle}>No Recommendations Available</Text>
               <Text style={styles.emptyText}>
-                Unable to load AI recommendations right now. Try generating a custom AI plan instead.
+                Unable to load recommendations right now. Try generating a custom plan instead.
               </Text>
             </Card>
           )}
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 20,
-    paddingBottom: 120,
+    paddingBottom: 140, // Increased padding to account for footer
   },
   header: {
     marginBottom: 32,

@@ -25,6 +25,7 @@ interface AuthStore extends AuthState {
   setTokens: (accessToken: string, refreshToken: string) => Promise<void>;
   clearAuthData: () => Promise<void>;
   checkAuthState: () => AuthStore;
+  refreshToken: () => Promise<any>;
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
@@ -40,31 +41,50 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   initialize: async () => {
     try {
       console.log('🚀 Initializing authentication state...');
+      
+      // First, clear any invalid tokens
       const accessToken = await AsyncStorage.getItem('accessToken');
       const refreshToken = await AsyncStorage.getItem('refreshToken');
       
-      // Only log token details if we actually find valid tokens
-      if (accessToken && accessToken !== 'None' && accessToken !== 'null' && accessToken.length > 10) {
-        console.log('🔍 Found valid tokens in storage');
+      // Clear invalid tokens immediately
+      if (accessToken === 'None' || accessToken === 'null' || 
+          refreshToken === 'None' || refreshToken === 'null') {
+        console.log('🧹 Clearing invalid tokens...');
+        await get().clearAuthData();
+        set({ isInitialized: true });
+        return;
+      }
+      
+      // Check if tokens exist and are valid
+      if (accessToken && accessToken.length > 10) {
+        console.log('🔍 Found tokens in storage, validating...');
         set({ accessToken, refreshToken });
-        console.log('✅ Valid tokens restored from storage');
         
         try {
           console.log('🔄 Attempting to fetch user profile...');
           await get().fetchProfile();
           console.log('✅ User profile fetched successfully');
-        } catch (error) {
+        } catch (error: any) {
           console.error('❌ Failed to fetch user profile:', error);
-          console.log('🧹 Clearing invalid tokens...');
-          await get().clearAuthData();
+          
+          // If it's a 401 error, try to refresh the token
+          if (error.message?.includes('401') || error.message?.includes('Authentication expired')) {
+            console.log('🔄 Token expired, attempting refresh...');
+            try {
+              await get().refreshToken();
+              console.log('✅ Token refreshed successfully');
+            } catch (refreshError) {
+              console.error('❌ Token refresh failed:', refreshError);
+              console.log('🧹 Clearing invalid tokens...');
+              await get().clearAuthData();
+            }
+          } else {
+            console.log('🧹 Clearing invalid tokens...');
+            await get().clearAuthData();
+          }
         }
       } else {
-        // Only log if we found invalid tokens that need cleaning
-        if (accessToken === 'None' || accessToken === 'null') {
-          console.log('🧹 Cleaning up invalid tokens...');
-          await get().clearAuthData();
-        }
-        // Don't log "No valid tokens found" as this is normal for new users
+        console.log('📝 No valid tokens found, user needs to login');
       }
       
       set({ isInitialized: true });
@@ -399,5 +419,28 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       refreshToken: state.refreshToken ? `${state.refreshToken.substring(0, 20)}...` : 'None'
     });
     return state;
+  },
+
+  refreshToken: async () => {
+    try {
+      console.log('🔄 Attempting to refresh token...');
+      const { refreshToken } = get();
+      
+      if (!refreshToken || refreshToken === 'None' || refreshToken === 'null') {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await authAPI.refreshToken(refreshToken);
+      console.log('✅ Token refresh successful');
+      
+      // Update tokens in store and storage
+      await get().setTokens(response.access, response.refresh);
+      set({ accessToken: response.access, refreshToken: response.refresh });
+      
+      return response;
+    } catch (error: any) {
+      console.error('❌ Token refresh failed:', error);
+      throw new Error('Token refresh failed');
+    }
   },
 }));

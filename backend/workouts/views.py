@@ -25,7 +25,7 @@ class ExerciseRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
 # --- Workout Plan CRUD ---
 class WorkoutPlanListCreateView(generics.ListCreateAPIView):
-    queryset = WorkoutPlan.objects.all()
+    queryset = WorkoutPlan.objects.all().order_by('id')
     serializer_class = WorkoutPlanSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -33,7 +33,7 @@ class WorkoutPlanListCreateView(generics.ListCreateAPIView):
         serializer.save(created_by=self.request.user)
 
 class WorkoutPlanRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = WorkoutPlan.objects.all()
+    queryset = WorkoutPlan.objects.all().order_by('id')
     serializer_class = WorkoutPlanSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -43,7 +43,7 @@ class UserWorkoutPlansView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return WorkoutPlan.objects.filter(created_by=self.request.user)
+        return WorkoutPlan.objects.filter(created_by=self.request.user).order_by('id')
 
 # --- Workout Day CRUD ---
 class WorkoutDayListCreateView(generics.ListCreateAPIView):

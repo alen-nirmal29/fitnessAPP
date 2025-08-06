@@ -193,6 +193,31 @@ export const authAPI = {
   healthCheck: async () => {
     return apiRequest(AUTH_ENDPOINTS.HEALTH, 'GET', undefined, false);
   },
+
+  refreshToken: async (refreshToken: string) => {
+    try {
+      console.log('🔄 Attempting to refresh token...');
+      
+      const response = await fetch(AUTH_ENDPOINTS.TOKEN_REFRESH, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh: refreshToken }),
+      });
+      
+      if (!response.ok) {
+        console.error('❌ Token refresh failed:', response.status);
+        throw new Error('Token refresh failed');
+      }
+      
+      const data = await response.json();
+      console.log('✅ Token refresh successful');
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Token refresh error:', error);
+      throw error;
+    }
+  },
 };
 
 // Workout API functions

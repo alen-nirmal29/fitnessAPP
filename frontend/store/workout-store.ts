@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { WorkoutPlan, WorkoutDifficulty, WorkoutDuration } from '@/types/workout';
 import { SpecificGoal } from '@/types/user';
 import { workoutAPI } from '@/services/api';
+import { getPredefinedPlans, getAllPredefinedPlans } from '@/constants/workouts';
+import { useAuthStore } from '@/store/auth-store';
 
 // Fallback plan generator for when AI fails
 const generateFallbackPlan = (specificGoal: SpecificGoal, duration: string): WorkoutPlan => {
@@ -587,6 +589,9 @@ export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
   progressMeasurements: null,
 
   setCurrentPlan: (plan) => {
+    console.log('📋 Setting current plan:', plan);
+    console.log('📋 Plan name:', plan?.name);
+    console.log('📋 Plan type:', typeof plan);
     set({ currentPlan: plan });
   },
 
@@ -597,6 +602,12 @@ export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
       console.log('🎯 Specific goal:', specificGoal);
       console.log('⏱️ Duration:', duration);
       console.log('👤 User details:', userDetails);
+      
+      // Get current user from auth store
+      const { user } = useAuthStore.getState();
+      if (!user?.id) {
+        throw new Error('User not authenticated');
+      }
 
       // Try to generate plan with AI first
       try {
@@ -612,27 +623,42 @@ export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
         console.log('🤖 AI generation failed, using fallback plan');
       }
 
-      // Fallback to predefined plan
-      const fallbackPlan = generateFallbackPlan(specificGoal, duration);
-      console.log('📋 Generated fallback plan:', fallbackPlan);
+      // Get user's fitness level for plan selection
+      const fitnessLevel = userDetails?.fitnessLevel || user?.fitnessLevel || 'intermediate';
+      
+      // Get predefined plans for this goal and fitness level
+      const predefinedPlans = getPredefinedPlans(specificGoal, fitnessLevel as WorkoutDifficulty);
+      
+      // Select the best matching plan or generate a fallback
+      let selectedPlan;
+      if (predefinedPlans.length > 0) {
+        // Find a plan that matches the duration, or use the first one
+        selectedPlan = predefinedPlans.find(plan => plan.duration === duration) || predefinedPlans[0];
+        console.log('📋 Selected predefined plan:', selectedPlan.name);
+      } else {
+        // Fallback to generated plan
+        selectedPlan = generateFallbackPlan(specificGoal, duration);
+        console.log('📋 Generated fallback plan:', selectedPlan.name);
+      }
       
       // Save plan to database
       try {
         await workoutAPI.createPlan({
-          name: fallbackPlan.name,
-          description: fallbackPlan.description,
-          difficulty: fallbackPlan.difficulty,
-          duration: fallbackPlan.duration,
+          name: selectedPlan.name,
+          description: selectedPlan.description,
+          difficulty: selectedPlan.difficulty,
+          duration: selectedPlan.duration,
           specific_goal: specificGoal,
-          is_ai_generated: false,
-          ai_prompt_used: ''
+          is_ai_generated: true, // Mark as AI generated
+          ai_prompt_used: JSON.stringify(userDetails), // Store user details as prompt
+          created_by: user.id // Use the authenticated user's ID
         });
         console.log('✅ Workout plan saved to database');
       } catch (dbError) {
         console.error('❌ Failed to save plan to database:', dbError);
       }
       
-      set({ currentPlan: fallbackPlan, isLoading: false });
+      set({ currentPlan: selectedPlan, isLoading: false });
     } catch (error: any) {
       console.error('❌ Workout plan generation failed:', error);
       set({ error: error.message, isLoading: false });
@@ -643,14 +669,45 @@ export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       console.log('📋 Getting recommended plans...');
+      console.log('🎯 Specific goal:', specificGoal);
+      console.log('👤 User details:', userDetails);
       
-      // Get user's plans from database
-      const userPlans = await workoutAPI.getUserPlans();
-      console.log('📊 User plans from database:', userPlans);
+      // Get user's fitness level from user details
+      const fitnessLevel = userDetails?.fitnessLevel || 'intermediate';
+      console.log('🎯 User fitness level:', fitnessLevel);
       
-      set({ recommendedPlans: userPlans, isLoading: false });
+      // Get predefined plans based on goal and fitness level
+      let predefinedPlans: WorkoutPlan[] = [];
+      try {
+        predefinedPlans = getPredefinedPlans(specificGoal, fitnessLevel as WorkoutDifficulty);
+        console.log('📊 Predefined plans found:', predefinedPlans.length);
+      } catch (predefinedError) {
+        console.error('❌ Error getting predefined plans:', predefinedError);
+        predefinedPlans = [];
+      }
+      
+      // Also get user's custom plans from database
+      let userPlans: WorkoutPlan[] = [];
+      try {
+        const dbPlans = await workoutAPI.getUserPlans();
+        userPlans = dbPlans || [];
+        console.log('📊 User plans from database:', userPlans.length);
+      } catch (dbError) {
+        console.log('⚠️ Could not fetch user plans from database:', dbError);
+        userPlans = [];
+      }
+      
+      // Combine predefined and user plans
+      const allPlans = [
+        ...(Array.isArray(predefinedPlans) ? predefinedPlans : []),
+        ...(Array.isArray(userPlans) ? userPlans : [])
+      ];
+      console.log('📋 Total recommended plans:', allPlans.length);
+      
+      set({ recommendedPlans: allPlans, isLoading: false });
     } catch (error: any) {
       console.error('❌ Failed to get recommended plans:', error);
+      console.error('❌ Error details:', error.stack);
       set({ error: error.message, isLoading: false });
     }
   },

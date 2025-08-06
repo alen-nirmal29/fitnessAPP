@@ -1,10 +1,10 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
-import { View } from "react-native";
+import { View, Text } from "react-native";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Colors from "@/constants/colors";
 
@@ -19,6 +19,7 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     ...FontAwesome.font,
   });
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (error) {
@@ -29,12 +30,33 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-      SplashScreen.hideAsync();
+      // Ensure everything is properly initialized before hiding splash screen
+      const initializeApp = async () => {
+        try {
+          // Add a longer delay to ensure root layout is fully mounted
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await SplashScreen.hideAsync();
+          // Add another delay after hiding splash screen
+          setTimeout(() => {
+            setIsReady(true);
+          }, 500);
+        } catch (error) {
+          console.error('Error during app initialization:', error);
+          setIsReady(true);
+        }
+      };
+      
+      initializeApp();
     }
   }, [loaded]);
 
-  if (!loaded) {
-    return null;
+  // Don't render anything until fonts are loaded and app is ready
+  if (!loaded || !isReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.dark.background, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: Colors.dark.text }}>Loading...</Text>
+      </View>
+    );
   }
 
   return <RootLayoutNav />;
@@ -45,100 +67,7 @@ function RootLayoutNav() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={{ flex: 1, backgroundColor: Colors.dark.background }}>
         <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: Colors.dark.background,
-          },
-          headerTintColor: Colors.dark.text,
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-          contentStyle: {
-            backgroundColor: Colors.dark.background,
-          },
-        }}
-      >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-        <Stack.Screen name="auth/signup" options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="onboarding/profile" 
-          options={{ 
-            title: "Your Profile",
-            headerShown: false,
-          }} 
-        />
-        <Stack.Screen 
-          name="onboarding/goals" 
-          options={{ 
-            title: "Fitness Goals",
-            headerShown: false,
-          }} 
-        />
-        <Stack.Screen 
-          name="onboarding/body-composition" 
-          options={{ 
-            title: "Body Composition",
-            headerShown: false,
-          }} 
-        />
-        <Stack.Screen 
-          name="onboarding/body-model" 
-          options={{ 
-            title: "Body Model",
-            headerShown: false,
-          }} 
-        />
-        <Stack.Screen 
-          name="onboarding/specific-goals" 
-          options={{ 
-            title: "Specific Goals",
-            headerShown: false,
-          }} 
-        />
-        <Stack.Screen 
-          name="workout/plan-selection" 
-          options={{ 
-            title: "Workout Plans",
-            headerShown: true,
-          }} 
-        />
-        <Stack.Screen 
-          name="workout/plan-generator" 
-          options={{ 
-            title: "Generate Workout Plan",
-            headerShown: true,
-          }} 
-        />
-        <Stack.Screen 
-          name="workout/plan-details" 
-          options={{ 
-            title: "Plan Details",
-            headerShown: true,
-          }} 
-        />
-        <Stack.Screen 
-          name="workout/session" 
-          options={{ 
-            title: "Workout Session",
-            headerShown: true,
-          }} 
-        />
-        <Stack.Screen 
-          name="(tabs)" 
-          options={{ 
-            headerShown: false,
-          }} 
-        />
-        <Stack.Screen 
-          name="edit-profile" 
-          options={{ 
-            title: "Edit Profile",
-            headerShown: false,
-          }} 
-        />
-      </Stack>
+        <Slot />
       </View>
     </GestureHandlerRootView>
   );

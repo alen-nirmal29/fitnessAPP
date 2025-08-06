@@ -1,7 +1,35 @@
 import { create } from 'zustand';
-import { WorkoutSession, ExerciseSet } from '@/types/workout';
+import { Exercise } from '@/types/workout';
 import { workoutAPI } from '@/services/api';
 import { progressAPI } from '@/services/api';
+
+export type WorkoutSessionState = 'idle' | 'active' | 'resting' | 'completed';
+
+export interface WorkoutSession {
+  id: string;
+  workoutName: string;
+  exercises: Exercise[];
+  currentExerciseIndex: number;
+  currentSet: number;
+  totalSets: number;
+  startTime: Date;
+  endTime?: Date;
+  completedExercises: string[];
+  state: WorkoutSessionState;
+  timerSeconds: number;
+  isRestTimer: boolean;
+}
+
+export interface ExerciseSet {
+  id: string;
+  exerciseId: string;
+  reps: number;
+  weight?: number;
+  duration?: number;
+  restTime: number;
+  notes: string;
+  difficultyRating?: number;
+}
 
 interface WorkoutSessionStore {
   currentSession: WorkoutSession | null;
@@ -14,7 +42,7 @@ interface WorkoutSessionStore {
     caloriesBurned: number;
   };
   
-  startWorkout: (workoutName: string, exercises: any[]) => void;
+  startWorkout: (workoutName: string, exercises: Exercise[]) => void;
   pauseWorkout: () => void;
   resumeWorkout: () => void;
   completeWorkout: () => void;
@@ -29,6 +57,7 @@ interface WorkoutSessionStore {
   nextSet: () => void;
   completeExercise: () => void;
   updateTimer: (seconds: number) => void;
+  startRest: (seconds: number) => void;
 }
 
 export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => ({
@@ -42,18 +71,19 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
     caloriesBurned: 0,
   },
 
-  startWorkout: (workoutName: string, exercises: any[]) => {
+  startWorkout: (workoutName: string, exercises: Exercise[]) => {
     const session: WorkoutSession = {
-      id: `session-${Date.now()}`,
-      planId: workoutName,
-      dayId: workoutName,
+      id: Date.now().toString(),
+      workoutName,
+      exercises,
+      currentExerciseIndex: 0,
+      currentSet: 1,
+      totalSets: exercises[0]?.sets || 1,
       startTime: new Date(),
-      endTime: null,
-      duration: 0,
-      status: 'in_progress',
-      exercises: [],
-      notes: '',
-      rating: null,
+      completedExercises: [],
+      state: 'active',
+      timerSeconds: 0,
+      isRestTimer: false,
     };
     set({ currentSession: session });
   },
@@ -64,7 +94,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       set({
         currentSession: {
           ...currentSession,
-          status: 'paused',
+          state: 'idle',
         },
       });
     }
@@ -76,7 +106,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       set({
         currentSession: {
           ...currentSession,
-          status: 'in_progress',
+          state: 'active',
         },
       });
     }
@@ -86,13 +116,12 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
     const { currentSession, completedWorkouts } = get();
     if (currentSession) {
       const endTime = new Date();
-      const duration = Math.round((endTime.getTime() - currentSession.startTime.getTime()) / 1000 / 60);
+      const duration = Math.round((endTime.getTime() - currentSession.startTime.getTime()) / 60000);
       
       const completedSession: WorkoutSession = {
         ...currentSession,
         endTime,
-        duration,
-        status: 'completed',
+        state: 'completed',
       };
 
       // Save to database
@@ -117,23 +146,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
   },
 
   cancelWorkout: () => {
-    const { currentSession } = get();
-    if (currentSession) {
-      const endTime = new Date();
-      const duration = Math.round((endTime.getTime() - currentSession.startTime.getTime()) / 1000 / 60);
-      
-      const cancelledSession: WorkoutSession = {
-        ...currentSession,
-        endTime,
-        duration,
-        status: 'cancelled',
-      };
-
-      set({
-        currentSession: null,
-        completedWorkouts: [...get().completedWorkouts, cancelledSession],
-      });
-    }
+    set({ currentSession: null });
   },
 
   addExerciseSet: (exerciseId, reps, weight, duration) => {
@@ -183,7 +196,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
     tomorrow.setDate(tomorrow.getDate() + 1);
     
     return completedWorkouts.filter(workout => {
-      const workoutDate = new Date(workout.date);
+      const workoutDate = new Date(workout.startTime);
       return workoutDate >= today && workoutDate < tomorrow;
     });
   },
@@ -194,7 +207,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
     return completedWorkouts.filter(workout => {
-      const workoutDate = new Date(workout.date);
+      const workoutDate = new Date(workout.startTime);
       return workoutDate >= oneWeekAgo;
     });
   },
@@ -203,24 +216,50 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
   nextSet: () => {
     const { currentSession } = get();
     if (currentSession) {
-      // This is a placeholder - the actual implementation depends on the session structure
-      console.log('Next set called');
+      const updatedSession = {
+        ...currentSession,
+        currentSet: currentSession.currentSet + 1,
+      };
+      set({ currentSession: updatedSession });
     }
   },
 
   completeExercise: () => {
     const { currentSession } = get();
     if (currentSession) {
-      // This is a placeholder - the actual implementation depends on the session structure
-      console.log('Complete exercise called');
+      const updatedSession = {
+        ...currentSession,
+        currentExerciseIndex: currentSession.currentExerciseIndex + 1,
+        completedExercises: [
+          ...currentSession.completedExercises,
+          currentSession.exercises[currentSession.currentExerciseIndex].name
+        ],
+      };
+      set({ currentSession: updatedSession });
     }
   },
 
   updateTimer: (seconds: number) => {
     const { currentSession } = get();
     if (currentSession) {
-      // This is a placeholder - the actual implementation depends on the session structure
-      console.log('Update timer called with:', seconds);
+      const updatedSession = {
+        ...currentSession,
+        timerSeconds: seconds,
+      };
+      set({ currentSession: updatedSession });
+    }
+  },
+
+  startRest: (seconds: number) => {
+    const { currentSession } = get();
+    if (currentSession) {
+      const updatedSession = {
+        ...currentSession,
+        state: 'resting',
+        timerSeconds: seconds,
+        isRestTimer: true,
+      };
+      set({ currentSession: updatedSession });
     }
   },
 
@@ -230,15 +269,16 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       
       // Prepare the session data for the API
       const sessionData = {
-        workout_day_id: null, // We'll set this to null since we don't have a specific workout day
-        status: session.status,
+        plan_id: session.id,
+        day_id: session.workoutName,
+        status: 'completed',
         started_at: session.startTime.toISOString(),
-        completed_at: session.endTime?.toISOString() || null,
-        duration: session.duration,
+        completed_at: new Date().toISOString(),
+        duration: Math.round((new Date().getTime() - session.startTime.getTime()) / 60000),
         total_exercises: session.exercises.length,
-        completed_exercises: session.exercises.length,
-        notes: session.notes || '',
-        rating: session.rating
+        completed_exercises: session.completedExercises.length,
+        notes: '',
+        rating: null
       };
 
       // Create the workout session
@@ -248,15 +288,15 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       // Save exercise sets if there are any
       if (session.exercises.length > 0) {
         const exerciseSetsData = session.exercises.map((exercise, index) => ({
-          session_id: savedSession.id,
-          exercise_id: exercise.exerciseId || 1, // Use a default exercise ID if not provided
+          session: savedSession.id, // integer PK
+          exercise: parseInt(exercise.id, 10), // integer PK
           set_number: index + 1,
           reps_completed: exercise.reps,
-          weight_used: exercise.weight || 0,
-          duration: exercise.duration || 0,
+          weight_used: 0, // Default weight
+          duration: 0, // Default duration
           rest_time: exercise.restTime || 60,
-          notes: exercise.notes || '',
-          difficulty_rating: exercise.difficultyRating
+          notes: '',
+          difficulty_rating: null
         }));
 
         // Save each exercise set
@@ -271,14 +311,15 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
         }
       }
 
-      // Save progress data using the correct progress API endpoint
+      // Save progress data
       const progressData = {
         session_id: savedSession.id,
-        workout_type: session.planId,
-        duration_minutes: session.duration,
-        calories_burned: Math.round(session.duration * 8), // Rough estimate
-        exercises_completed: session.exercises.length,
-        notes: session.notes || ''
+        workout_type: session.workoutName,
+        duration_minutes: sessionData.duration,
+        calories_burned: Math.round(sessionData.duration * 8), // Rough estimate
+        exercises_completed: session.completedExercises.length,
+        notes: '',
+        date: new Date().toISOString(), // Add date field
       };
 
       await progressAPI.saveEntry(progressData);

@@ -298,16 +298,17 @@ export default function WorkoutSessionScreen() {
   }
 
   const currentExercise = currentSession.exercises[currentSession.currentExerciseIndex];
-  const progress = (currentSession.currentExerciseIndex + (currentSession.currentSet / currentSession.totalSets)) / currentSession.exercises.length;
+  const progress = currentExercise && currentSession.exercises.length > 0 ? 
+    (currentSession.currentExerciseIndex + (currentSession.currentSet / currentSession.totalSets)) / currentSession.exercises.length : 0;
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.workoutTitle}>{currentSession.workoutName}</Text>
+          <Text style={styles.workoutTitle}>{currentSession.workoutName || 'Workout Session'}</Text>
           <Text style={styles.workoutProgress}>
-            Exercise {currentSession.currentExerciseIndex + 1} of {currentSession.exercises.length}
+            Exercise {currentSession.currentExerciseIndex + 1} of {currentSession.exercises.length || 0}
           </Text>
           <ProgressBar progress={progress} height={8} />
         </View>
@@ -330,29 +331,40 @@ export default function WorkoutSessionScreen() {
         </Card>
 
         {/* Current Exercise */}
-        <Card style={styles.exerciseCard}>
-          <View style={styles.exerciseHeader}>
-            <Dumbbell size={20} color={Colors.dark.accent} />
-            <Text style={styles.exerciseName}>{currentExercise.name}</Text>
-          </View>
-          
-          <Text style={styles.exerciseDescription}>{currentExercise.description}</Text>
-          
-          <View style={styles.exerciseStats}>
-            <View style={styles.exerciseStatItem}>
-              <Text style={styles.exerciseStatValue}>{currentSession.currentSet}</Text>
-              <Text style={styles.exerciseStatLabel}>Current Set</Text>
+        {currentExercise ? (
+          <Card style={styles.exerciseCard}>
+            <View style={styles.exerciseHeader}>
+              <Dumbbell size={20} color={Colors.dark.accent} />
+              <Text style={styles.exerciseName}>{currentExercise.name || 'Unknown Exercise'}</Text>
             </View>
-            <View style={styles.exerciseStatItem}>
-              <Text style={styles.exerciseStatValue}>{currentSession.totalSets}</Text>
-              <Text style={styles.exerciseStatLabel}>Total Sets</Text>
+            
+            <Text style={styles.exerciseDescription}>{currentExercise.description || 'No description available'}</Text>
+            
+            <View style={styles.exerciseStats}>
+              <View style={styles.exerciseStatItem}>
+                <Text style={styles.exerciseStatValue}>{currentSession.currentSet}</Text>
+                <Text style={styles.exerciseStatLabel}>Current Set</Text>
+              </View>
+              <View style={styles.exerciseStatItem}>
+                <Text style={styles.exerciseStatValue}>{currentSession.totalSets}</Text>
+                <Text style={styles.exerciseStatLabel}>Total Sets</Text>
+              </View>
+              <View style={styles.exerciseStatItem}>
+                <Text style={styles.exerciseStatValue}>{currentExercise.reps || 0}</Text>
+                <Text style={styles.exerciseStatLabel}>Reps</Text>
+              </View>
             </View>
-            <View style={styles.exerciseStatItem}>
-              <Text style={styles.exerciseStatValue}>{currentExercise.reps}</Text>
-              <Text style={styles.exerciseStatLabel}>Reps</Text>
+          </Card>
+        ) : (
+          <Card style={styles.exerciseCard}>
+            <View style={styles.exerciseHeader}>
+              <Dumbbell size={20} color={Colors.dark.accent} />
+              <Text style={styles.exerciseName}>No Exercise Available</Text>
             </View>
-          </View>
-        </Card>
+            
+            <Text style={styles.exerciseDescription}>Please select a workout plan to get started</Text>
+          </Card>
+        )}
 
         {/* Controls */}
         <View style={styles.controls}>
@@ -370,7 +382,7 @@ export default function WorkoutSessionScreen() {
           />
           
           <Button
-            title={currentSession.isRestTimer ? 'Skip Rest' : (currentSession.currentSet >= currentSession.totalSets ? 'Complete Exercise' : 'Next Set')}
+            title={currentSession.isRestTimer ? 'Skip Rest' : (currentSession.currentSet >= (currentSession.totalSets || 1) ? 'Complete Exercise' : 'Next Set')}
             onPress={handleNextSet}
             variant="primary"
             size="medium"

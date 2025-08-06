@@ -32,6 +32,7 @@ export default function LoginScreen() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setErrorState] = useState<string | null>(null);
+  const [hasNavigated, setHasNavigated] = useState(false);
 
   const { login, loginWithGoogle, isAuthenticated, isInitialized, user } = useAuthStore();
 
@@ -64,13 +65,17 @@ export default function LoginScreen() {
           console.log('Current auth state after Google login:', authState);
           
           if (isAuthenticated && user) {
-            if (user.hasCompletedOnboarding) {
-              console.log('User has completed onboarding, redirecting to main app');
-              router.replace('/(tabs)');
-            } else {
-              console.log('User has not completed onboarding, redirecting to onboarding');
-              router.replace('/onboarding/profile');
-            }
+            setHasNavigated(true);
+            // Add longer delay to ensure navigation happens after component is ready
+            setTimeout(() => {
+              if (user.hasCompletedOnboarding) {
+                console.log('User has completed onboarding, redirecting to main app');
+                router.replace('/(tabs)');
+              } else {
+                console.log('User has not completed onboarding, redirecting to onboarding');
+                router.replace('/onboarding/profile');
+              }
+            }, 1500); // Increased delay
           } else {
             console.log('User not properly authenticated, staying on login screen');
           }
@@ -86,10 +91,13 @@ export default function LoginScreen() {
 
   // Redirect logged in users away from login screen
   useEffect(() => {
-    if (isInitialized && isAuthenticated && user) {
-      router.replace('/(tabs)');
+    if (isInitialized && isAuthenticated && user && !hasNavigated) {
+      setHasNavigated(true);
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 1500); // Increased delay
     }
-  }, [isInitialized, isAuthenticated, user]);
+  }, [isInitialized, isAuthenticated, user, hasNavigated]);
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -129,13 +137,17 @@ export default function LoginScreen() {
       console.log('Current auth state after login:', authState);
       
       if (isAuthenticated && user) {
-        if (user.hasCompletedOnboarding) {
-          console.log('User has completed onboarding, redirecting to main app');
-          router.replace('/(tabs)');
-        } else {
-          console.log('User has not completed onboarding, redirecting to onboarding');
-          router.replace('/onboarding/profile');
-        }
+        setHasNavigated(true);
+        // Add longer delay to ensure navigation happens after component is ready
+        setTimeout(() => {
+          if (user.hasCompletedOnboarding) {
+            console.log('User has completed onboarding, redirecting to main app');
+            router.replace('/(tabs)');
+          } else {
+            console.log('User has not completed onboarding, redirecting to onboarding');
+            router.replace('/onboarding/profile');
+          }
+        }, 1500); // Increased delay
       } else {
         console.log('User not properly authenticated, staying on login screen');
       }
@@ -158,6 +170,17 @@ export default function LoginScreen() {
       setErrorState('Google login error');
     }
   };
+
+  // Show loading screen if navigating
+  if (hasNavigated) {
+    return (
+      <View style={styles.loadingContainer}>
+        <StatusBar style="light" />
+        <ActivityIndicator size="large" color={Colors.dark.accent} />
+        <Text style={styles.loadingText}>Redirecting...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -235,6 +258,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.dark.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: Colors.dark.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: Colors.dark.text,
+    fontSize: 16,
+    marginTop: 16,
   },
   scrollContent: {
     flexGrow: 1,

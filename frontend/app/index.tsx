@@ -12,6 +12,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { usePathname } from 'expo-router';
 import { makeRedirectUri } from 'expo-auth-session';
 import { authAPI } from '@/services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -22,6 +23,7 @@ export default function WelcomeScreen() {
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setLoading] = useState(false);
   const [error, setErrorState] = useState<string | null>(null);
+  const [hasNavigated, setHasNavigated] = useState(false);
   const pathname = usePathname();
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
@@ -31,17 +33,35 @@ export default function WelcomeScreen() {
 
   useEffect(() => {
     const initAuth = async () => {
+      // Clear any invalid tokens first
+      try {
+        const accessToken = await AsyncStorage.getItem('accessToken');
+        const refreshToken = await AsyncStorage.getItem('refreshToken');
+        
+        if (accessToken === 'None' || accessToken === 'null' || 
+            refreshToken === 'None' || refreshToken === 'null') {
+          console.log('🧹 Clearing invalid tokens on app start...');
+          await AsyncStorage.removeItem('accessToken');
+          await AsyncStorage.removeItem('refreshToken');
+        }
+      } catch (error) {
+        console.log('Error clearing tokens:', error);
+      }
+      
       if (!isInitialized) {
         await useAuthStore.getState().initialize();
       }
-      setIsReady(true);
+      // Add a longer delay to ensure root layout is fully mounted
+      setTimeout(() => {
+        setIsReady(true);
+      }, 2000); // Increased delay to ensure root layout is ready
     };
     
     initAuth();
   }, [isInitialized]);
 
   useEffect(() => {
-    if (pathname === '/' && isReady && isAuthenticated && user) {
+    if (pathname === '/' && isReady && isAuthenticated && user && !hasNavigated) {
       console.log('User authenticated on main screen:', user);
       console.log('hasCompletedOnboarding:', user.hasCompletedOnboarding);
       
@@ -49,15 +69,20 @@ export default function WelcomeScreen() {
       const authState = useAuthStore.getState().checkAuthState();
       console.log('Current auth state on main screen:', authState);
       
-      if (user.hasCompletedOnboarding) {
-        console.log('User has completed onboarding, redirecting to main app');
-        router.replace('/(tabs)');
-      } else {
-        console.log('User has not completed onboarding, redirecting to onboarding');
-        router.replace('/onboarding/profile');
-      }
+      setHasNavigated(true);
+      
+      // Add longer delay to ensure navigation happens after component is fully ready
+      setTimeout(() => {
+        if (user.hasCompletedOnboarding) {
+          console.log('User has completed onboarding, redirecting to main app');
+          router.replace('/(tabs)');
+        } else {
+          console.log('User has not completed onboarding, redirecting to onboarding');
+          router.replace('/onboarding/profile');
+        }
+      }, 1500); // Increased delay
     }
-  }, [isReady, isAuthenticated, user, pathname, isInOnboarding]);
+  }, [isReady, isAuthenticated, user, pathname, isInOnboarding, hasNavigated]);
 
   // ✅ UPDATED GOOGLE LOGIN RESPONSE HANDLER
   useEffect(() => {
@@ -75,7 +100,7 @@ export default function WelcomeScreen() {
           console.log('✅ Google authentication successful');
           
           // Wait a bit to ensure state is updated
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 500));
           
           // Get the updated user state after login
           const { user, isAuthenticated } = useAuthStore.getState();
@@ -86,13 +111,13 @@ export default function WelcomeScreen() {
             // Use setTimeout to ensure navigation happens after component is ready
             setTimeout(() => {
               router.replace('/(tabs)/');
-            }, 100);
+            }, 1500); // Increased delay
           } else {
             console.log('📝 User has not completed onboarding, redirecting to onboarding');
             // Use setTimeout to ensure navigation happens after component is ready
             setTimeout(() => {
               router.replace('/onboarding/profile');
-            }, 100);
+            }, 1500); // Increased delay
           }
         } catch (e: any) {
           console.error('Google sign-in error:', e);
@@ -103,7 +128,6 @@ export default function WelcomeScreen() {
       })();
     }
   }, [response]);
-  
 
   const handleGetStarted = () => {
     router.push('/auth/signup');
@@ -124,8 +148,6 @@ export default function WelcomeScreen() {
     }
   };
 
-
-
   if (!isReady) {
     return (
       <View style={styles.loadingContainer}>
@@ -136,7 +158,7 @@ export default function WelcomeScreen() {
     );
   }
 
-  if (isAuthenticated) {
+  if (isAuthenticated && !hasNavigated) {
     return (
       <View style={styles.loadingContainer}>
         <StatusBar style="light" />
@@ -174,33 +196,33 @@ export default function WelcomeScreen() {
           <Text style={styles.subtitle}>
             Personalized workout plans based on your body composition and fitness goals
           </Text>
-        </View>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup} disabled={isLoading}>
-            <RNImage
-              source={require('../assets/images/google-logo.png')}
-              style={styles.googleLogo}
-              resizeMode="contain"
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup} disabled={isLoading}>
+              <RNImage
+                source={require('../assets/images/google-logo.png')}
+                style={styles.googleLogo}
+                resizeMode="contain"
+              />
+              <Text style={styles.googleButtonText}>{isLoading ? 'Signing up...' : 'Sign up with Google'}</Text>
+            </TouchableOpacity>
+            
+
+            
+            <Button
+              title="Get Started"
+              onPress={handleGetStarted}
+              variant="primary"
+              size="large"
+              style={[styles.button, { minHeight: 64 }]}
             />
-            <Text style={styles.googleButtonText}>{isLoading ? 'Signing up...' : 'Sign up with Google'}</Text>
-          </TouchableOpacity>
-          
-
-          
-          <Button
-            title="Get Started"
-            onPress={handleGetStarted}
-            variant="primary"
-            size="large"
-            style={[styles.button, { minHeight: 64 }]}
-          />
-          <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Already have account? </Text>
-            <Text style={styles.loginLink} onPress={handleLogin}>Log in</Text>
+            <View style={styles.loginRow}>
+              <Text style={styles.loginText}>Already have account? </Text>
+              <Text style={styles.loginLink} onPress={handleLogin}>Log in</Text>
+            </View>
           </View>
+          {error && <Text style={styles.loadingText}>{error}</Text>}
         </View>
-        {error && <Text style={styles.loadingText}>{error}</Text>}
       </LinearGradient>
     </View>
   );
@@ -234,4 +256,4 @@ const styles = StyleSheet.create({
   loginRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 12 },
   loginText: { color: '#fff', fontSize: 16 },
   loginLink: { color: '#1976D2', fontSize: 16, fontWeight: '500' },
-});
+}); 

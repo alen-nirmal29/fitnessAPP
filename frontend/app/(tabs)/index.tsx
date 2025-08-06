@@ -10,13 +10,25 @@ import ProgressBar from '@/components/ProgressBar';
 import { useAuthStore } from '@/store/auth-store';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useWorkoutSessionStore } from '@/store/workout-session-store';
-import { defaultWorkouts } from '@/constants/workouts';
+import { getAllPredefinedPlans } from '@/constants/workouts';
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
   const { currentPlan, setCurrentPlan, loadUserPlans } = useWorkoutStore();
   const { workoutStats, getTodayWorkouts, getWeeklyWorkouts } = useWorkoutSessionStore();
   const [showComparisonModal, setShowComparisonModal] = useState(false);
+
+  // Debug logging
+  console.log('🏠 Home Screen Debug:');
+  console.log('👤 User:', user);
+  console.log('👤 User name:', user?.name);
+  console.log('👤 User first_name:', user?.first_name);
+  console.log('👤 User email:', user?.email);
+  console.log('📋 Current Plan:', currentPlan);
+  console.log('📋 Current Plan type:', typeof currentPlan);
+  console.log('📋 Current Plan keys:', currentPlan ? Object.keys(currentPlan) : 'null');
+  console.log('🎯 User specific goal:', user?.specificGoal);
+  console.log('🎯 User fitness goal:', user?.fitnessGoal);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -37,10 +49,31 @@ export default function HomeScreen() {
 
   // Move setCurrentPlan to useEffect to avoid state update during render
   useEffect(() => {
+    console.log('🔄 Home Screen useEffect triggered');
+    console.log('📋 Current plan exists:', !!currentPlan);
+    console.log('👤 User specific goal:', user?.specificGoal);
+    
     if (!currentPlan) {
-      const goalBasedWorkout = defaultWorkouts.find(w => w.specificGoal === user?.specificGoal);
-      const workout = goalBasedWorkout || defaultWorkouts[0];
-      setCurrentPlan(workout);
+      console.log('📋 No current plan, setting one...');
+      const allPlans = getAllPredefinedPlans();
+      console.log('📊 Total predefined plans:', allPlans.length);
+      
+      // If user has no specific goal, default to 'build_muscle'
+      const userGoal = user?.specificGoal || 'build_muscle';
+      console.log('🎯 Using goal:', userGoal);
+      
+      const goalBasedWorkout = allPlans.find(w => w.specificGoal === userGoal);
+      console.log('🎯 Goal-based workout found:', !!goalBasedWorkout);
+      
+      const workout = goalBasedWorkout || allPlans[0];
+      console.log('📋 Selected workout:', workout?.name);
+      
+      if (workout) {
+        console.log('✅ Setting current plan:', workout.name);
+        setCurrentPlan(workout);
+      } else {
+        console.log('❌ No workout plan available');
+      }
     }
   }, [currentPlan, user?.specificGoal, setCurrentPlan]);
 
@@ -49,6 +82,12 @@ export default function HomeScreen() {
     if (hour < 12) return 'Good morning';
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
+  };
+
+  const getUserDisplayName = () => {
+    const displayName = user?.name || user?.first_name || 'User';
+    console.log('👤 Display name:', displayName);
+    return displayName;
   };
 
   const getTodayWorkoutsCount = () => {
@@ -65,7 +104,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>{getGreeting()}, {user?.name || 'User'}!</Text>
+            <Text style={styles.greeting}>{getGreeting()}, {getUserDisplayName()}!</Text>
             <Text style={styles.subtitle}>Ready to crush your fitness goals?</Text>
           </View>
         </View>
@@ -99,7 +138,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Current Plan */}
-        {currentPlan && (
+        {currentPlan && typeof currentPlan === 'object' ? (
           <Card style={styles.planCard}>
             <View style={styles.planHeader}>
               <Text style={styles.planTitle}>Current Plan</Text>
@@ -107,21 +146,37 @@ export default function HomeScreen() {
                 <Text style={styles.changePlanText}>Change</Text>
               </TouchableOpacity>
             </View>
-            <Text style={styles.planName}>{currentPlan.name}</Text>
-            <Text style={styles.planDescription}>{currentPlan.description}</Text>
+            <Text style={styles.planName}>{currentPlan.name || 'Unnamed Plan'}</Text>
+            <Text style={styles.planDescription}>{currentPlan.description || 'No description available'}</Text>
             <View style={styles.planStats}>
               <View style={styles.planStat}>
                 <Clock size={16} color={Colors.textSecondary} />
-                <Text style={styles.planStatText}>{currentPlan.duration}</Text>
+                <Text style={styles.planStatText}>{currentPlan.duration || 'Unknown duration'}</Text>
               </View>
               <View style={styles.planStat}>
                 <Target size={16} color={Colors.textSecondary} />
-                <Text style={styles.planStatText}>{currentPlan.specificGoal?.replace('_', ' ')}</Text>
+                <Text style={styles.planStatText}>{(currentPlan.specificGoal || 'Unknown goal').replace('_', ' ')}</Text>
               </View>
             </View>
             <Button
               title="Start Workout"
               onPress={() => router.push('/workout/session')}
+              style={styles.startWorkoutButton}
+            />
+          </Card>
+        ) : (
+          <Card style={styles.planCard}>
+            <View style={styles.planHeader}>
+              <Text style={styles.planTitle}>Current Plan</Text>
+              <TouchableOpacity onPress={() => router.push('/workout/plan-selection')}>
+                <Text style={styles.changePlanText}>Select Plan</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.planName}>No Plan Selected</Text>
+            <Text style={styles.planDescription}>Choose a workout plan to get started</Text>
+            <Button
+              title="Select Plan"
+              onPress={() => router.push('/workout/plan-selection')}
               style={styles.startWorkoutButton}
             />
           </Card>
@@ -139,7 +194,7 @@ export default function HomeScreen() {
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => router.push('/progress')}
+            onPress={() => router.push('/(tabs)/progress')}
           >
             <TrendingUp size={24} color={Colors.success} />
             <Text style={styles.actionText}>Track Progress</Text>

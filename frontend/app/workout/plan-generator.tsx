@@ -105,8 +105,11 @@ export default function PlanGeneratorScreen() {
             <Text style={styles.sectionSubtitle}>
               Choose how long you want your workout plan to last
             </Text>
-            
-            <View style={styles.durationContainer}>
+            <RNScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.durationScrollContainer}
+            >
               {['1_month', '3_month', '6_month'].map((option) => (
                 <Button
                   key={option}
@@ -124,7 +127,7 @@ export default function PlanGeneratorScreen() {
                   ]}
                 />
               ))}
-            </View>
+            </RNScrollView>
           </Card>
 
           {/* Additional Details Section */}
@@ -171,8 +174,10 @@ export default function PlanGeneratorScreen() {
 
         {/* Fixed footer for action buttons */}
         <View style={styles.footer}>
-          <BackButton
+          <Button
+            title="Back"
             onPress={handleBack}
+            variant="outline"
             style={styles.backButton}
           />
           <Button
@@ -282,14 +287,17 @@ const styles = StyleSheet.create({
   },
   durationButton: {
     flex: 1,
-    minHeight: 48,
-    borderRadius: 12,
+    minHeight: 36, // reduced from 48
+    borderRadius: 10, // slightly smaller
+    marginHorizontal: 2, // add a little space between buttons
+    paddingVertical: 0, // reduce padding
+    paddingHorizontal: 0, // reduce padding
   },
   selectedDurationButton: {
     transform: [{ scale: 1.02 }],
   },
   durationButtonText: {
-    fontSize: 14,
+    fontSize: 12, // reduced from 14
     fontWeight: '600',
   },
   selectedDurationButtonText: {
@@ -338,24 +346,28 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    backgroundColor: Colors.dark.background,
-    borderTopWidth: 1,
-    borderTopColor: Colors.ui.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 24,
     gap: 16,
   },
   backButton: {
     flex: 1,
-    minHeight: 56,
+    marginRight: 8,
   },
   generateButton: {
     flex: 2,
-    minHeight: 56,
+    marginLeft: 8,
+    paddingVertical: 14, // more vertical padding
+    paddingHorizontal: 0,
+    borderRadius: 12,
+  },
+  durationScrollContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 2,
   },
 });

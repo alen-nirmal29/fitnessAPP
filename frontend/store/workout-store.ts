@@ -763,14 +763,29 @@ export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
     }
   },
 
-  saveWorkoutProgress: async (progressData) => {
+  saveWorkoutProgress: async (planId, progressPercentage) => {
     try {
       console.log('💾 Saving workout progress to database...');
+      
+      // Prepare the progress data
+      const progressData = {
+        plan_id: planId,
+        progress_percentage: progressPercentage,
+        date: new Date().toISOString().split('T')[0], // Format as YYYY-MM-DD
+        notes: ''
+      };
+      
       const result = await workoutAPI.saveProgress(progressData);
       console.log('✅ Workout progress saved:', result);
+      
+      // Update local state
+      const { workoutProgress } = get();
+      set({ workoutProgress: { ...workoutProgress, [planId]: progressPercentage } });
     } catch (error) {
       console.error('❌ Failed to save workout progress:', error);
-      throw error;
+      // Update local state even if API call fails
+      const { workoutProgress } = get();
+      set({ workoutProgress: { ...workoutProgress, [planId]: progressPercentage } });
     }
   },
 

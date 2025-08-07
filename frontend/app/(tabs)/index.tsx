@@ -38,42 +38,25 @@ export default function HomeScreen() {
     const loadWorkoutHistory = async () => {
       try {
         console.log('📊 Loading workout history for home page...');
-        const { workoutAPI } = await import('@/services/api');
-        const history = await workoutAPI.getHistory();
-        console.log('✅ Workout history loaded for home:', history);
         
-        // Update the session store with the loaded history
+        // Get the session store and refresh workout stats
         const { useWorkoutSessionStore } = await import('@/store/workout-session-store');
         const sessionStore = useWorkoutSessionStore.getState();
         
-        // Convert backend history to session store format
-        const formattedHistory = history.results?.map((workout: any) => ({
-          id: workout.id?.toString() || `workout-${Date.now()}`,
-          workoutName: workout.workout_type || 'Workout',
-          exercises: [],
-          currentExerciseIndex: 0,
-          currentSet: 1,
-          totalSets: 1,
-          startTime: new Date(workout.started_at || workout.date),
-          endTime: new Date(workout.completed_at || workout.date),
-          completedExercises: [],
-          state: 'completed' as const,
-          timerSeconds: 0,
-          isRestTimer: false,
-          date: workout.date || workout.started_at,
-          duration: workout.duration_minutes || 0,
-          exercisesCompleted: workout.exercises_completed || 0,
-          caloriesBurned: workout.calories_burned || 0
-        })) || [];
+        // This will fetch the latest workout history from the backend
+        // and update the local state with the latest data
+        await sessionStore.refreshWorkoutStats();
         
-        console.log('✅ Formatted workout history for home:', formattedHistory);
+        // Also refresh the workout store data
+        const { useWorkoutStore } = await import('@/store/workout-store');
+        const workoutStore = useWorkoutStore.getState();
         
-        // Update the session store with the loaded history
-        sessionStore.completedWorkouts = formattedHistory;
+        // Load user plans if needed
+        if (!workoutStore.currentPlan) {
+          await workoutStore.loadUserPlans();
+        }
         
-        // Refresh workout stats based on the loaded history
-        sessionStore.refreshWorkoutStats();
-        
+        console.log('✅ Workout history loaded for home page');
       } catch (error) {
         console.error('❌ Failed to load workout history for home:', error);
       }
@@ -88,33 +71,24 @@ export default function HomeScreen() {
       const refreshData = async () => {
         try {
           console.log('🔄 Refreshing workout data on home screen focus...');
-          const { workoutAPI } = await import('@/services/api');
-          const history = await workoutAPI.getHistory();
           
+          // Get the session store and refresh workout stats
           const { useWorkoutSessionStore } = await import('@/store/workout-session-store');
           const sessionStore = useWorkoutSessionStore.getState();
           
-          const formattedHistory = history.results?.map((workout: any) => ({
-            id: workout.id?.toString() || `workout-${Date.now()}`,
-            workoutName: workout.workout_type || 'Workout',
-            exercises: [],
-            currentExerciseIndex: 0,
-            currentSet: 1,
-            totalSets: 1,
-            startTime: new Date(workout.started_at || workout.date),
-            endTime: new Date(workout.completed_at || workout.date),
-            completedExercises: [],
-            state: 'completed' as const,
-            timerSeconds: 0,
-            isRestTimer: false,
-            date: workout.date || workout.started_at,
-            duration: workout.duration_minutes || 0,
-            exercisesCompleted: workout.exercises_completed || 0,
-            caloriesBurned: workout.calories_burned || 0
-          })) || [];
+          // This will fetch the latest workout history from the backend
+          // and update the local state with the latest data
+          await sessionStore.refreshWorkoutStats();
           
-          sessionStore.completedWorkouts = formattedHistory;
-          sessionStore.refreshWorkoutStats();
+          // Also refresh the workout store data
+          const { useWorkoutStore } = await import('@/store/workout-store');
+          const workoutStore = useWorkoutStore.getState();
+          
+          // Load user plans if needed
+          if (!workoutStore.currentPlan) {
+            await workoutStore.loadUserPlans();
+          }
+          
           console.log('✅ Refreshed workout data on home screen focus');
         } catch (error) {
           console.error('❌ Failed to refresh workout data:', error);

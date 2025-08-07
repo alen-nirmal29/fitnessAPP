@@ -188,14 +188,26 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
           const newProgress = Math.min(currentProgress + 10, 100); // Add 10% progress per workout
           
           workoutStore.updateWorkoutProgress(workoutStore.currentPlan.id, newProgress);
-          console.log('✅ Updated workout progress:', newProgress);
+          // Use the updated saveWorkoutProgress function to persist it
+          await workoutStore.saveWorkoutProgress(workoutStore.currentPlan.id, newProgress);
+          console.log('✅ Updated and saved workout progress:', newProgress);
           
           // Also mark this workout as completed in the workout store
           workoutStore.completeWorkout(completedSession.id);
           console.log('✅ Marked workout as completed in workout store');
+          
+          // Refresh workout stats to ensure UI updates properly
+          await get().refreshWorkoutStats();
+          console.log('✅ Refreshed workout stats after completion');
         }
       } catch (error) {
         console.error('❌ Failed to update workout store progress:', error);
+        // Even if there's an error, try to refresh workout stats
+        try {
+          await get().refreshWorkoutStats();
+        } catch (statsError) {
+          console.error('❌ Failed to refresh workout stats:', statsError);
+        }
       }
     }
   },
@@ -204,7 +216,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
     set({ currentSession: null });
   },
 
-  addExerciseSet: (exerciseId, reps, weight, duration) => {
+  addExerciseSet: async (exerciseId, reps, weight, duration) => {
     const { currentSession } = get();
     if (currentSession) {
       const newSet: ExerciseSet = {
@@ -218,18 +230,58 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
         difficultyRating: null,
       };
 
-      // This function should not modify the exercises array directly
-      // Instead, it should be adding to a separate exerciseSets array
-      // For now, we'll just log a warning and not modify the state
-      console.warn('addExerciseSet is not properly implemented yet');
+      // Find the exercise in the current session
+      const exerciseIndex = currentSession.exercises.findIndex(e => e.id === exerciseId);
+      if (exerciseIndex === -1) {
+        console.error(`❌ Exercise with ID ${exerciseId} not found in current session`);
+        return;
+      }
+
+      // Create a new exercises array with the updated exercise
+      const updatedExercises = [...currentSession.exercises];
       
-      // Proper implementation would be something like:
-      // set({
-      //   currentSession: {
-      //     ...currentSession,
-      //     exerciseSets: [...(currentSession.exerciseSets || []), newSet],
-      //   },
-      // });
+      // Update the exercise with the new set data
+      updatedExercises[exerciseIndex] = {
+        ...updatedExercises[exerciseIndex],
+        reps,
+        weight,
+      };
+
+      // Update the current session with the new exercises array
+      set({
+        currentSession: {
+          ...currentSession,
+          exercises: updatedExercises,
+        },
+      });
+
+      console.log(`✅ Added set for exercise ${exerciseId}: ${reps} reps, ${weight || 0} kg`);
+      
+      // Save the exercise set to the database if we have an active session
+      try {
+        if (currentSession.id) {
+          const setData = {
+            session: currentSession.id,
+            exercise_id: exerciseId,
+            set_number: 1, // This should be incremented based on existing sets
+            reps_completed: reps,
+            weight_used: weight || 0,
+            duration: duration || 0,
+            rest_time: 60,
+            notes: '',
+            difficulty_rating: null
+          };
+          
+          // Save the set to the database
+          await workoutAPI.createExerciseSet(setData);
+          console.log('✅ Exercise set saved to database:', setData);
+          
+          // Refresh workout stats to ensure UI updates
+          get().refreshWorkoutStats();
+        }
+      } catch (error) {
+        console.error('❌ Failed to save exercise set to database:', error);
+      }
     }
   },
 
@@ -444,6 +496,28 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       await workoutAPI.saveProgress(progressData);
       console.log('✅ Workout progress saved:', progressData);
       
+      // Update workout progress in workout store
+      try {
+        const { useWorkoutStore } = await import('@/store/workout-store');
+        const workoutStore = useWorkoutStore.getState();
+        
+        if (session.workoutName && workoutStore.currentPlan) {
+          // Mark the workout as completed in the workout store
+          workoutStore.completeWorkout(savedSession.id);
+          
+          // Update progress for the current plan
+          const currentProgress = workoutStore.workoutProgress[workoutStore.currentPlan.id] || 0;
+          const newProgress = Math.min(currentProgress + 10, 100); // Increment by 10% per workout
+          workoutStore.updateWorkoutProgress(workoutStore.currentPlan.id, newProgress);
+          
+          // Refresh workout stats to ensure UI updates properly
+          get().refreshWorkoutStats();
+          console.log('✅ Refreshed workout stats after saving to database');
+        }
+      } catch (error) {
+        console.error('❌ Failed to update workout progress in store:', error);
+      }
+      
       console.log('✅ Workout session and all data saved to database successfully');
     } catch (error) {
       console.error('❌ Failed to save workout session:', error);
@@ -452,42 +526,102 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
   },
 
   // Function to refresh workout stats based on completed workouts
-  refreshWorkoutStats: () => {
-    const { completedWorkouts } = get();
-    
-    const totalWorkouts = completedWorkouts.length;
-    const totalExercises = completedWorkouts.reduce((sum, workout) => 
-      sum + (workout.exercisesCompleted || workout.completedExercises?.length || 0), 0);
-    const totalCalories = completedWorkouts.reduce((sum, workout) => 
-      sum + (workout.caloriesBurned || 0), 0);
-    
-    // Calculate weekly workouts
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const weeklyWorkouts = completedWorkouts.filter(workout => {
-      const workoutDate = new Date(workout.startTime);
-      return workoutDate >= oneWeekAgo;
-    }).length;
-    
-    // Calculate strength increase (simple formula: 0.5% per workout)
-    const strengthIncrease = Math.min(totalWorkouts * 0.5, 100);
-    
-    set({
-      workoutStats: {
+  refreshWorkoutStats: async () => {
+    try {
+      console.log('🔄 Refreshing workout stats...');
+      
+      // First, try to get the latest workout history from the backend
+      try {
+        const { workoutAPI } = await import('@/services/api');
+        const history = await workoutAPI.getHistory();
+        console.log('✅ Latest workout history loaded:', history);
+        
+        // Convert backend history to session store format
+        const formattedHistory = history.results?.map((workout: any) => ({
+          id: workout.id?.toString() || `workout-${Date.now()}`,
+          workoutName: workout.workout_type || 'Workout',
+          exercises: [],
+          currentExerciseIndex: 0,
+          currentSet: 1,
+          totalSets: 1,
+          startTime: new Date(workout.started_at || workout.date),
+          endTime: new Date(workout.completed_at || workout.date),
+          completedExercises: [],
+          state: 'completed' as const,
+          timerSeconds: 0,
+          isRestTimer: false,
+          date: workout.date || workout.started_at,
+          duration: workout.duration_minutes || 0,
+          exercisesCompleted: workout.exercises_completed || 0,
+          caloriesBurned: workout.calories_burned || 0
+        })) || [];
+        
+        // Update the completed workouts with the latest data
+        set({ completedWorkouts: formattedHistory });
+        console.log('✅ Updated completed workouts with latest data');
+      } catch (error) {
+        console.error('❌ Failed to load latest workout history:', error);
+        // Continue with local data if backend fetch fails
+      }
+      
+      const { completedWorkouts } = get();
+      
+      const totalWorkouts = completedWorkouts.length;
+      const totalExercises = completedWorkouts.reduce((sum, workout) => 
+        sum + (workout.exercisesCompleted || workout.completedExercises?.length || 0), 0);
+      const totalCalories = completedWorkouts.reduce((sum, workout) => 
+        sum + (workout.caloriesBurned || 0), 0);
+      
+      // Calculate weekly workouts
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const weeklyWorkouts = completedWorkouts.filter(workout => {
+        const workoutDate = new Date(workout.startTime);
+        return workoutDate >= oneWeekAgo;
+      }).length;
+      
+      // Calculate strength increase (simple formula: 0.5% per workout)
+      const strengthIncrease = Math.min(totalWorkouts * 0.5, 100);
+      
+      set({
+        workoutStats: {
+          totalWorkouts,
+          weeklyWorkouts,
+          totalExercises,
+          strengthIncrease,
+          caloriesBurned: totalCalories
+        }
+      });
+      
+      console.log('✅ Refreshed workout stats:', {
         totalWorkouts,
         weeklyWorkouts,
         totalExercises,
         strengthIncrease,
         caloriesBurned: totalCalories
+      });
+      
+      // Also update the workout store progress
+      try {
+        const { useWorkoutStore } = await import('@/store/workout-store');
+        const workoutStore = useWorkoutStore.getState();
+        
+        if (workoutStore.currentPlan) {
+          // Calculate progress based on completed workouts
+          const planId = workoutStore.currentPlan.id;
+          const totalDays = workoutStore.currentPlan.schedule.length;
+          const completedDays = Math.min(totalWorkouts, totalDays);
+          const progress = Math.round((completedDays / totalDays) * 100);
+          
+          // Update progress in workout store
+          workoutStore.updateWorkoutProgress(planId, progress);
+          console.log('✅ Updated workout progress in workout store:', progress);
+        }
+      } catch (error) {
+        console.error('❌ Failed to update workout store progress:', error);
       }
-    });
-    
-    console.log('✅ Refreshed workout stats:', {
-      totalWorkouts,
-      weeklyWorkouts,
-      totalExercises,
-      strengthIncrease,
-      caloriesBurned: totalCalories
-    });
+    } catch (error) {
+      console.error('❌ Error refreshing workout stats:', error);
+    }
   },
 }));

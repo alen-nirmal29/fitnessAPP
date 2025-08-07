@@ -64,6 +64,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           console.log('🔄 Attempting to fetch user profile...');
           await get().fetchProfile();
           console.log('✅ User profile fetched successfully');
+          
+          // Fetch complete profile to ensure all user data is available
+          try {
+            console.log('🔄 Fetching complete profile during initialization...');
+            await get().fetchCompleteProfile();
+            console.log('✅ Complete profile fetched successfully during initialization');
+          } catch (completeProfileError) {
+            console.error('⚠️ Error fetching complete profile during initialization:', completeProfileError);
+            // Continue even if complete profile fetch fails
+          }
         } catch (error: any) {
           console.error('❌ Failed to fetch user profile:', error);
           
@@ -73,6 +83,25 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             try {
               await get().refreshToken();
               console.log('✅ Token refreshed successfully');
+              
+              // Try to fetch profile and complete profile after token refresh
+              try {
+                await get().fetchProfile();
+                console.log('✅ User profile fetched successfully after token refresh');
+                
+                try {
+                  console.log('🔄 Fetching complete profile after token refresh...');
+                  await get().fetchCompleteProfile();
+                  console.log('✅ Complete profile fetched successfully after token refresh');
+                } catch (completeProfileError) {
+                  console.error('⚠️ Error fetching complete profile after token refresh:', completeProfileError);
+                  // Continue even if complete profile fetch fails
+                }
+              } catch (profileError) {
+                console.error('❌ Failed to fetch user profile after token refresh:', profileError);
+                console.log('🧹 Clearing invalid tokens...');
+                await get().clearAuthData();
+              }
             } catch (refreshError) {
               console.error('❌ Token refresh failed:', refreshError);
               console.log('🧹 Clearing invalid tokens...');
@@ -213,6 +242,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       await get().setTokens(data.tokens.access, data.tokens.refresh);
       console.log('💾 Tokens stored, setting user...');
       get().setUser(data.user, data.tokens.access, data.tokens.refresh);
+      
+      // Fetch complete profile to ensure all user data is available
+      try {
+        console.log('🔄 Fetching complete profile after login...');
+        await get().fetchCompleteProfile();
+        console.log('✅ Complete profile fetched successfully after login');
+      } catch (profileError) {
+        console.error('⚠️ Error fetching complete profile after login:', profileError);
+        // Continue even if profile fetch fails
+      }
+      
       console.log('✅ Login completed successfully');
     } catch (error: any) {
       set({
@@ -246,6 +286,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       await get().setTokens(data.tokens.access, data.tokens.refresh);
       console.log('💾 Tokens stored, setting user...');
       get().setUser(data.user, data.tokens.access, data.tokens.refresh);
+      
+      // Fetch complete profile to ensure all user data is available
+      try {
+        console.log('🔄 Fetching complete profile after signup...');
+        await get().fetchCompleteProfile();
+        console.log('✅ Complete profile fetched successfully after signup');
+      } catch (profileError) {
+        console.error('⚠️ Error fetching complete profile after signup:', profileError);
+        // Continue even if profile fetch fails
+      }
+      
       console.log('✅ Signup completed successfully');
     } catch (error: any) {
       set({
@@ -276,6 +327,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       await get().setTokens(data.tokens.access, data.tokens.refresh);
       console.log('👤 Setting user in store...');
       get().setUser(data.user, data.tokens.access, data.tokens.refresh);
+      
+      // Fetch complete profile to ensure all user data is available
+      try {
+        console.log('🔄 Fetching complete profile after Google login...');
+        await get().fetchCompleteProfile();
+        console.log('✅ Complete profile fetched successfully after Google login');
+      } catch (profileError) {
+        console.error('⚠️ Error fetching complete profile after Google login:', profileError);
+        // Continue even if profile fetch fails
+      }
+      
       console.log('✅ Google login completed successfully');
     } catch (error: any) {
       console.error('❌ Google login error:', error);
@@ -397,8 +459,44 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
-  completeOnboarding: () => {
-    set({ isInOnboarding: false });
+  completeOnboarding: async () => {
+    try {
+      console.log('🔄 Calling API to complete onboarding...');
+      // Call the backend API to mark onboarding as complete
+      const response = await authAPI.completeOnboarding({});
+      console.log('✅ Onboarding completed successfully:', response);
+      
+      // Update the user in the store with completed onboarding flag
+      if (response.user) {
+        const currentUser = get().user;
+        if (currentUser) {
+          set({
+            user: {
+              ...currentUser,
+              hasCompletedOnboarding: true
+            },
+            isInOnboarding: false
+          });
+        }
+      } else {
+        // Just update the onboarding flag in the store
+        set({ isInOnboarding: false });
+      }
+      
+      // Fetch complete profile to ensure all user data is available
+      try {
+        console.log('🔄 Fetching complete profile after completing onboarding...');
+        await get().fetchCompleteProfile();
+        console.log('✅ Complete profile fetched successfully after completing onboarding');
+      } catch (profileError) {
+        console.error('⚠️ Error fetching complete profile after completing onboarding:', profileError);
+        // Continue even if profile fetch fails
+      }
+    } catch (error) {
+      console.error('❌ Error completing onboarding:', error);
+      // Still update the local state even if the API call fails
+      set({ isInOnboarding: false });
+    }
   },
 
   setInOnboarding: (inOnboarding: boolean) => {

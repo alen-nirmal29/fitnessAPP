@@ -24,50 +24,35 @@ export default function ProgressScreen() {
   React.useEffect(() => {
     const loadWorkoutHistory = async () => {
       try {
-        console.log('📊 Loading workout history from backend...');
-        const { workoutAPI } = await import('@/services/api');
-        const history = await workoutAPI.getHistory();
-        console.log('✅ Workout history loaded:', history);
+        console.log('📊 Loading workout history for progress page...');
         
-        // Update the session store with the loaded history
+        // Get the session store and refresh workout stats
         const { useWorkoutSessionStore } = await import('@/store/workout-session-store');
         const sessionStore = useWorkoutSessionStore.getState();
         
-        // Convert backend history to session store format
-        const formattedHistory = history.results?.map((workout: any) => ({
-          id: workout.id?.toString() || `workout-${Date.now()}`,
-          workoutName: workout.workout_type || 'Workout',
-          exercises: [],
-          currentExerciseIndex: 0,
-          currentSet: 1,
-          totalSets: 1,
-          startTime: new Date(workout.started_at || workout.date),
-          endTime: new Date(workout.completed_at || workout.date),
-          completedExercises: [],
-          state: 'completed' as const,
-          timerSeconds: 0,
-          isRestTimer: false,
-          date: workout.date || workout.started_at,
-          duration: workout.duration_minutes || 0,
-          exercisesCompleted: workout.exercises_completed || 0,
-          caloriesBurned: workout.calories_burned || 0
-        })) || [];
+        // This will fetch the latest workout history from the backend
+        // and update the local state with the latest data
+        await sessionStore.refreshWorkoutStats();
         
-        console.log('✅ Formatted workout history:', formattedHistory);
+        // Also refresh the workout store data
+        const { useWorkoutStore } = await import('@/store/workout-store');
+        const workoutStore = useWorkoutStore.getState();
         
-        // Update the session store with the loaded history
-        sessionStore.completedWorkouts = formattedHistory;
+        // Generate progress measurements based on the current plan and progress
+        if (workoutStore.currentPlan && user?.currentMeasurements) {
+          const planId = workoutStore.currentPlan.id;
+          const progress = workoutStore.workoutProgress[planId] || 0;
+          workoutStore.generateProgressMeasurements(user.currentMeasurements, user?.specificGoal || 'build_muscle', progress);
+        }
         
-        // Refresh workout stats based on the loaded history
-        sessionStore.refreshWorkoutStats();
-        
+        console.log('✅ Workout history loaded for progress page');
       } catch (error) {
         console.error('❌ Failed to load workout history:', error);
       }
     };
     
     loadWorkoutHistory();
-  }, []);
+  }, [user?.currentMeasurements, user?.specificGoal]);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
@@ -75,33 +60,26 @@ export default function ProgressScreen() {
       const refreshData = async () => {
         try {
           console.log('🔄 Refreshing workout data on progress screen focus...');
-          const { workoutAPI } = await import('@/services/api');
-          const history = await workoutAPI.getHistory();
           
+          // Get the session store and refresh workout stats
           const { useWorkoutSessionStore } = await import('@/store/workout-session-store');
           const sessionStore = useWorkoutSessionStore.getState();
           
-          const formattedHistory = history.results?.map((workout: any) => ({
-            id: workout.id?.toString() || `workout-${Date.now()}`,
-            workoutName: workout.workout_type || 'Workout',
-            exercises: [],
-            currentExerciseIndex: 0,
-            currentSet: 1,
-            totalSets: 1,
-            startTime: new Date(workout.started_at || workout.date),
-            endTime: new Date(workout.completed_at || workout.date),
-            completedExercises: [],
-            state: 'completed' as const,
-            timerSeconds: 0,
-            isRestTimer: false,
-            date: workout.date || workout.started_at,
-            duration: workout.duration_minutes || 0,
-            exercisesCompleted: workout.exercises_completed || 0,
-            caloriesBurned: workout.calories_burned || 0
-          })) || [];
+          // This will fetch the latest workout history from the backend
+          // and update the local state with the latest data
+          await sessionStore.refreshWorkoutStats();
           
-          sessionStore.completedWorkouts = formattedHistory;
-          sessionStore.refreshWorkoutStats();
+          // Also refresh the workout store data
+          const { useWorkoutStore } = await import('@/store/workout-store');
+          const workoutStore = useWorkoutStore.getState();
+          
+          // Generate progress measurements based on the current plan and progress
+          if (workoutStore.currentPlan && user?.currentMeasurements) {
+            const planId = workoutStore.currentPlan.id;
+            const progress = workoutStore.workoutProgress[planId] || 0;
+            workoutStore.generateProgressMeasurements(user.currentMeasurements, user?.specificGoal || 'build_muscle', progress);
+          }
+          
           console.log('✅ Refreshed workout data on progress screen focus');
         } catch (error) {
           console.error('❌ Failed to refresh workout data:', error);

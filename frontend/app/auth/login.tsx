@@ -39,9 +39,8 @@ export default function LoginScreen() {
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId,
     redirectUri: makeRedirectUri({ 
-      scheme: 'com.rork.fitshape',
-      useProxy: false,
-    }),
+      scheme: 'com.rork.fitshape'
+    })
   });
 
   // Handle Google OAuth response
@@ -58,24 +57,19 @@ export default function LoginScreen() {
           const { user, isAuthenticated } = useAuthStore.getState();
           console.log('Google login successful, user:', user);
           console.log('isAuthenticated:', isAuthenticated);
-          console.log('hasCompletedOnboarding:', user?.hasCompletedOnboarding);
-          
-          // Check authentication state
-          const authState = useAuthStore.getState().checkAuthState();
-          console.log('Current auth state after Google login:', authState);
           
           if (isAuthenticated && user) {
+            console.log('hasCompletedOnboarding:', user.hasCompletedOnboarding);
             setHasNavigated(true);
-            // Add longer delay to ensure navigation happens after component is ready
-            setTimeout(() => {
-              if (user.hasCompletedOnboarding) {
-                console.log('User has completed onboarding, redirecting to main app');
-                router.replace('/(tabs)');
-              } else {
-                console.log('User has not completed onboarding, redirecting to onboarding');
-                router.replace('/onboarding/profile');
-              }
-            }, 1500); // Increased delay
+            
+            // Use a more reliable navigation approach
+            if (user.hasCompletedOnboarding) {
+              console.log('Redirecting to main app');
+              router.replace('/(tabs)');
+            } else {
+              console.log('Redirecting to onboarding');
+              router.replace('/onboarding/profile');
+            }
           } else {
             console.log('User not properly authenticated, staying on login screen');
           }
@@ -86,6 +80,9 @@ export default function LoginScreen() {
           setIsLoading(false);
         }
       })();
+    } else if (response?.type === 'error') {
+      console.error('Google login error:', response.error);
+      setErrorState('Google login was cancelled or failed');
     }
   }, [response]);
 
@@ -165,7 +162,7 @@ export default function LoginScreen() {
   const handleGoogleLogin = async () => {
     setErrorState(null);
     try {
-      await promptAsync({ useProxy: false });
+      await promptAsync();
     } catch (e) {
       setErrorState('Google login error');
     }

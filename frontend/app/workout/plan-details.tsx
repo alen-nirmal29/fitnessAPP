@@ -52,7 +52,24 @@ export default function PlanDetailsScreen() {
   };
 
   const handleStartPlan = () => {
-    router.replace('/(tabs)');
+    if (!currentPlan) return;
+    
+    // Mark the first day as active
+    const firstDay = currentPlan.schedule.find(day => !day.restDay);
+    if (!firstDay) {
+      console.error('No workout days found in the plan');
+      return;
+    }
+    
+    // Navigate to the first workout day
+    router.push({
+      pathname: '/workout/session',
+      params: { 
+        dayId: firstDay.id,
+        dayName: firstDay.name,
+        exercises: JSON.stringify(firstDay.exercises)
+      }
+    });
   };
 
   const handleBack = () => {
@@ -74,36 +91,48 @@ export default function PlanDetailsScreen() {
   // Mock goal measurements based on the workout plan
   const getGoalMeasurements = () => {
     const current = user?.currentMeasurements || {
-      chest: 50, waist: 50, hips: 50, arms: 50, legs: 50, shoulders: 50
+      chest: 50,
+      neck: 40,
+      waist: 80,
+      leftarm: 30,
+      rightarm: 30,
+      leftthigh: 50,
+      rightthigh: 50,
+      shoulders: 110,
+      hips: 90,
+      calves: 35
     };
+
+    if (!current) return null;
 
     switch (currentPlan.specificGoal) {
       case 'build_muscle':
         return {
-          chest: current.chest + 5,
-          waist: current.waist,
-          hips: current.hips,
-          arms: current.arms + 5,
-          legs: current.legs + 5,
-          shoulders: current.shoulders + 5,
+          ...current,
+          chest: (current.chest || 0) + 5,
+          leftarm: (current.leftarm || 0) + 3,
+          rightarm: (current.rightarm || 0) + 3,
+          leftthigh: (current.leftthigh || 0) + 3,
+          rightthigh: (current.rightthigh || 0) + 3,
+          shoulders: (current.shoulders || 0) + 5,
         };
       case 'weight_loss':
         return {
-          chest: current.chest - 2,
-          waist: current.waist - 5,
-          hips: current.hips - 3,
-          arms: current.arms,
-          legs: current.legs,
-          shoulders: current.shoulders,
+          ...current,
+          chest: Math.max(0, (current.chest || 0) - 2),
+          waist: Math.max(0, (current.waist || 0) - 5),
+          hips: Math.max(0, (current.hips || 0) - 3),
         };
       case 'increase_strength':
         return {
-          chest: current.chest + 3,
-          waist: current.waist - 2,
-          hips: current.hips,
-          arms: current.arms + 3,
-          legs: current.legs + 3,
-          shoulders: current.shoulders + 3,
+          ...current,
+          chest: (current.chest || 0) + 3,
+          waist: Math.max(0, (current.waist || 0) - 2),
+          leftarm: (current.leftarm || 0) + 2,
+          rightarm: (current.rightarm || 0) + 2,
+          leftthigh: (current.leftthigh || 0) + 2,
+          rightthigh: (current.rightthigh || 0) + 2,
+          shoulders: (current.shoulders || 0) + 3,
         };
       default:
         return current;
@@ -199,7 +228,7 @@ export default function PlanDetailsScreen() {
           onPress={handleStartPlan}
           variant="primary"
           size="large"
-          style={[styles.button, { flex: 1 }]}
+          style={{ ...styles.button, flex: 1 }}
         />
       </View>
     </View>

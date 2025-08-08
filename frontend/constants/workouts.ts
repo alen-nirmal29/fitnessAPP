@@ -2,6 +2,220 @@ import { WorkoutPlan, WorkoutDifficulty, WorkoutDuration } from '@/types/workout
 import { SpecificGoal } from '@/types/user';
 
 export const PREDEFINED_PLANS: Record<string, Record<string, WorkoutPlan[]>> = {
+  weight_gain: {
+    beginner: [
+      {
+        id: 'gw-beginner-1',
+        name: 'Beginner Weight Gain',
+        description: 'High-calorie workout plan for beginners looking to gain weight',
+        difficulty: 'beginner' as WorkoutDifficulty,
+        duration: '1_month' as WorkoutDuration,
+        specificGoal: 'weight_gain',
+        isAIGenerated: false,
+        schedule: [
+          {
+            id: 'gw-day-1',
+            name: 'Day 1: Full Body',
+            exercises: [
+              {
+                id: 'gw-ex-1',
+                name: 'Squats',
+                description: 'Barbell squats for lower body mass',
+                muscleGroup: 'legs',
+                sets: 4,
+                reps: 8,
+                restTime: 90,
+              },
+              {
+                id: 'gw-ex-2',
+                name: 'Bench Press',
+                description: 'Flat bench barbell press',
+                muscleGroup: 'chest',
+                sets: 4,
+                reps: 8,
+                restTime: 90,
+              },
+              {
+                id: 'gw-ex-3',
+                name: 'Bent Over Rows',
+                description: 'Barbell rows for back thickness',
+                muscleGroup: 'back',
+                sets: 3,
+                reps: 10,
+                restTime: 75,
+              },
+              {
+                id: 'gw-ex-4',
+                name: 'Overhead Press',
+                description: 'Military press for shoulders',
+                muscleGroup: 'shoulders',
+                sets: 3,
+                reps: 10,
+                restTime: 75,
+              },
+            ],
+            restDay: false,
+          },
+          {
+            id: 'gw-day-2',
+            name: 'Day 2: Rest',
+            exercises: [],
+            restDay: true,
+          },
+          {
+            id: 'gw-day-3',
+            name: 'Day 3: Lower Body',
+            exercises: [
+              {
+                id: 'gw-ex-5',
+                name: 'Deadlifts',
+                description: 'Conventional deadlifts',
+                muscleGroup: 'back',
+                sets: 4,
+                reps: 5,
+                restTime: 120,
+              },
+              {
+                id: 'gw-ex-6',
+                name: 'Leg Press',
+                description: 'Heavy leg press',
+                muscleGroup: 'legs',
+                sets: 4,
+                reps: 10,
+                restTime: 90,
+              },
+              {
+                id: 'gw-ex-7',
+                name: 'Calf Raises',
+                description: 'Weighted calf raises',
+                muscleGroup: 'legs',
+                sets: 4,
+                reps: 15,
+                restTime: 60,
+              },
+            ],
+            restDay: false,
+          },
+          {
+            id: 'gw-day-4',
+            name: 'Day 4: Rest',
+            exercises: [],
+            restDay: true,
+          },
+          {
+            id: 'gw-day-5',
+            name: 'Day 5: Upper Body',
+            exercises: [
+              {
+                id: 'gw-ex-8',
+                name: 'Pull-ups',
+                description: 'Weighted pull-ups',
+                muscleGroup: 'back',
+                sets: 4,
+                reps: 8,
+                restTime: 90,
+              },
+              {
+                id: 'gw-ex-9',
+                name: 'Incline Dumbbell Press',
+                description: 'Incline bench press with dumbbells',
+                muscleGroup: 'chest',
+                sets: 4,
+                reps: 8,
+                restTime: 75,
+              },
+              {
+                id: 'gw-ex-10',
+                name: 'Dips',
+                description: 'Weighted dips',
+                muscleGroup: 'chest',
+                sets: 3,
+                reps: 8,
+                restTime: 75,
+              },
+              {
+                id: 'gw-ex-11',
+                name: 'Barbell Curls',
+                description: 'Standing barbell curls',
+                muscleGroup: 'arms',
+                sets: 3,
+                reps: 10,
+                restTime: 60,
+              },
+            ],
+            restDay: false,
+          },
+          {
+            id: 'gw-day-6',
+            name: 'Day 6: Rest',
+            exercises: [],
+            restDay: true,
+          },
+          {
+            id: 'gw-day-7',
+            name: 'Day 7: Active Recovery',
+            exercises: [
+              {
+                id: 'gw-ex-12',
+                name: 'Light Cardio',
+                description: '20-30 minutes of light walking or cycling',
+                muscleGroup: 'cardio',
+                sets: 1,
+                reps: 1,
+                restTime: 0,
+              },
+            ],
+            restDay: false,
+          },
+        ],
+      },
+    ],
+    intermediate: [
+      {
+        id: 'gw-intermediate-1',
+        name: 'Intermediate Mass Builder',
+        description: '4-day split for intermediate weight gain',
+        difficulty: 'intermediate' as WorkoutDifficulty,
+        duration: '3_month' as WorkoutDuration,
+        specificGoal: 'weight_gain',
+        isAIGenerated: false,
+        schedule: [
+          {
+            id: 'gwi-day-1',
+            name: 'Day 1: Chest & Triceps',
+            exercises: [
+              {
+                id: 'gwi-ex-1',
+                name: 'Flat Bench Press',
+                description: '4 sets of 6-8 reps',
+                muscleGroup: 'chest',
+                sets: 4,
+                reps: 8,
+                restTime: 120,
+              },
+              // More exercises...
+            ],
+            restDay: false,
+          },
+          // More days...
+        ],
+      },
+    ],
+    advanced: [
+      {
+        id: 'gw-advanced-1',
+        name: 'Advanced Weight Gain',
+        description: '5-day split for advanced lifters',
+        difficulty: 'advanced' as WorkoutDifficulty,
+        duration: '6_month' as WorkoutDuration,
+        specificGoal: 'weight_gain',
+        isAIGenerated: false,
+        schedule: [
+          // Advanced schedule...
+        ],
+      },
+    ],
+  },
   build_muscle: {
     beginner: [
       {

@@ -1,562 +1,197 @@
 import { create } from 'zustand';
-import { WorkoutPlan, WorkoutDifficulty, WorkoutDuration } from '@/types/workout';
-import { SpecificGoal } from '@/types/user';
+import { persist } from 'zustand/middleware';
+import { v4 as uuidv4 } from 'uuid';
 import { workoutAPI } from '@/services/api';
-import { getPredefinedPlans, getAllPredefinedPlans } from '@/constants/workouts';
+import { WorkoutPlan, WorkoutDay, Exercise, WorkoutDifficulty, WorkoutDuration } from '@/types/workout';
+import { getPredefinedPlans } from '@/constants/workouts';
+import { SpecificGoal } from '@/types/user';
+import { UserProfile } from '@/types/user';
 import { useAuthStore } from '@/store/auth-store';
 
-// Fallback plan generator for when AI fails
-const generateFallbackPlan = (specificGoal: SpecificGoal, duration: string): WorkoutPlan => {
-  const goalPlans = {
-    build_muscle: {
-      name: 'Muscle Building Program',
-      description: 'Comprehensive muscle building plan with progressive overload',
-      difficulty: 'intermediate' as WorkoutDifficulty,
-      schedule: [
-        {
-          id: 'day-1',
-          name: 'Day 1: Chest & Triceps',
-          exercises: [
-            {
-              id: 'ex-1',
-              name: 'Bench Press',
-              description: 'Lie on bench, lower bar to chest, press up',
-              muscleGroup: 'chest',
-              sets: 4,
-              reps: 8,
-              restTime: 120,
-            },
-            {
-              id: 'ex-2',
-              name: 'Incline Dumbbell Press',
-              description: 'Press dumbbells on incline bench',
-              muscleGroup: 'chest',
-              sets: 3,
-              reps: 10,
-              restTime: 90,
-            },
-            {
-              id: 'ex-3',
-              name: 'Tricep Dips',
-              description: 'Lower body using triceps, push back up',
-              muscleGroup: 'arms',
-              sets: 3,
-              reps: 12,
-              restTime: 60,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-2',
-          name: 'Day 2: Back & Biceps',
-          exercises: [
-            {
-              id: 'ex-4',
-              name: 'Pull-ups',
-              description: 'Pull body up to bar using back muscles',
-              muscleGroup: 'back',
-              sets: 4,
-              reps: 8,
-              restTime: 120,
-            },
-            {
-              id: 'ex-5',
-              name: 'Barbell Rows',
-              description: 'Row barbell to lower chest',
-              muscleGroup: 'back',
-              sets: 4,
-              reps: 10,
-              restTime: 90,
-            },
-            {
-              id: 'ex-6',
-              name: 'Bicep Curls',
-              description: 'Curl dumbbells using biceps',
-              muscleGroup: 'arms',
-              sets: 3,
-              reps: 12,
-              restTime: 60,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-3',
-          name: 'Day 3: Legs',
-          exercises: [
-            {
-              id: 'ex-7',
-              name: 'Squats',
-              description: 'Lower body by bending knees, return to standing',
-              muscleGroup: 'legs',
-              sets: 4,
-              reps: 10,
-              restTime: 120,
-            },
-            {
-              id: 'ex-8',
-              name: 'Deadlifts',
-              description: 'Lift barbell from ground to hip level',
-              muscleGroup: 'legs',
-              sets: 4,
-              reps: 8,
-              restTime: 180,
-            },
-            {
-              id: 'ex-9',
-              name: 'Leg Press',
-              description: 'Press weight with legs on machine',
-              muscleGroup: 'legs',
-              sets: 3,
-              reps: 12,
-              restTime: 90,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-4',
-          name: 'Day 4: Shoulders',
-          exercises: [
-            {
-              id: 'ex-10',
-              name: 'Military Press',
-              description: 'Press barbell overhead',
-              muscleGroup: 'shoulders',
-              sets: 4,
-              reps: 8,
-              restTime: 120,
-            },
-            {
-              id: 'ex-11',
-              name: 'Lateral Raises',
-              description: 'Raise dumbbells to sides',
-              muscleGroup: 'shoulders',
-              sets: 3,
-              reps: 12,
-              restTime: 60,
-            },
-            {
-              id: 'ex-12',
-              name: 'Rear Delt Flyes',
-              description: 'Fly dumbbells behind back',
-              muscleGroup: 'shoulders',
-              sets: 3,
-              reps: 12,
-              restTime: 60,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-5',
-          name: 'Day 5: Rest',
-          exercises: [],
-          restDay: true,
-        },
-        {
-          id: 'day-6',
-          name: 'Day 6: Full Body',
-          exercises: [
-            {
-              id: 'ex-13',
-              name: 'Burpees',
-              description: 'Squat, jump, push-up, jump',
-              muscleGroup: 'full_body',
-              sets: 3,
-              reps: 10,
-              restTime: 60,
-            },
-            {
-              id: 'ex-14',
-              name: 'Mountain Climbers',
-              description: 'Alternate knee to chest',
-              muscleGroup: 'full_body',
-              sets: 3,
-              reps: 20,
-              restTime: 45,
-            },
-            {
-              id: 'ex-15',
-              name: 'Plank',
-              description: 'Hold plank position',
-              muscleGroup: 'core',
-              sets: 3,
-              reps: 30,
-              restTime: 60,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-7',
-          name: 'Day 7: Rest',
-          exercises: [],
-          restDay: true,
-        },
-      ],
-      duration: duration as WorkoutDuration,
-      specificGoal: specificGoal,
-    },
-    weight_loss: {
-      name: 'Weight Loss Program',
-      description: 'High-intensity cardio and strength training for fat loss',
-      difficulty: 'intermediate' as WorkoutDifficulty,
-      schedule: [
-        {
-          id: 'day-1',
-          name: 'Day 1: HIIT Cardio',
-          exercises: [
-            {
-              id: 'ex-1',
-              name: 'Jumping Jacks',
-              description: 'Jump while raising arms and legs',
-              muscleGroup: 'cardio',
-              sets: 3,
-              reps: 30,
-              restTime: 30,
-            },
-            {
-              id: 'ex-2',
-              name: 'Burpees',
-              description: 'Squat, jump, push-up, jump',
-              muscleGroup: 'full_body',
-              sets: 3,
-              reps: 15,
-              restTime: 45,
-            },
-            {
-              id: 'ex-3',
-              name: 'Mountain Climbers',
-              description: 'Alternate knee to chest',
-              muscleGroup: 'full_body',
-              sets: 3,
-              reps: 30,
-              restTime: 30,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-2',
-          name: 'Day 2: Strength Training',
-          exercises: [
-            {
-              id: 'ex-4',
-              name: 'Squats',
-              description: 'Lower body by bending knees',
-              muscleGroup: 'legs',
-              sets: 4,
-              reps: 15,
-              restTime: 60,
-            },
-            {
-              id: 'ex-5',
-              name: 'Push-ups',
-              description: 'Lower body to ground, push back up',
-              muscleGroup: 'chest',
-              sets: 3,
-              reps: 12,
-              restTime: 45,
-            },
-            {
-              id: 'ex-6',
-              name: 'Plank',
-              description: 'Hold plank position',
-              muscleGroup: 'core',
-              sets: 3,
-              reps: 45,
-              restTime: 30,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-3',
-          name: 'Day 3: Cardio',
-          exercises: [
-            {
-              id: 'ex-7',
-              name: 'Running',
-              description: 'Run at moderate pace',
-              muscleGroup: 'cardio',
-              sets: 1,
-              reps: 30,
-              restTime: 0,
-            },
-            {
-              id: 'ex-8',
-              name: 'Cycling',
-              description: 'Cycle at high intensity',
-              muscleGroup: 'cardio',
-              sets: 1,
-              reps: 20,
-              restTime: 0,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-4',
-          name: 'Day 4: Rest',
-          exercises: [],
-          restDay: true,
-        },
-        {
-          id: 'day-5',
-          name: 'Day 5: Circuit Training',
-          exercises: [
-            {
-              id: 'ex-9',
-              name: 'Jump Squats',
-              description: 'Squat then jump',
-              muscleGroup: 'legs',
-              sets: 3,
-              reps: 20,
-              restTime: 30,
-            },
-            {
-              id: 'ex-10',
-              name: 'Push-ups',
-              description: 'Lower body to ground, push back up',
-              muscleGroup: 'chest',
-              sets: 3,
-              reps: 15,
-              restTime: 30,
-            },
-            {
-              id: 'ex-11',
-              name: 'Lunges',
-              description: 'Step forward, lower body',
-              muscleGroup: 'legs',
-              sets: 3,
-              reps: 20,
-              restTime: 30,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-6',
-          name: 'Day 6: Active Recovery',
-          exercises: [
-            {
-              id: 'ex-12',
-              name: 'Walking',
-              description: 'Walk at moderate pace',
-              muscleGroup: 'cardio',
-              sets: 1,
-              reps: 45,
-              restTime: 0,
-            },
-            {
-              id: 'ex-13',
-              name: 'Stretching',
-              description: 'Stretch all major muscle groups',
-              muscleGroup: 'full_body',
-              sets: 1,
-              reps: 15,
-              restTime: 0,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-7',
-          name: 'Day 7: Rest',
-          exercises: [],
-          restDay: true,
-        },
-      ],
-      duration: duration as WorkoutDuration,
-      specificGoal: specificGoal,
-    },
-    increase_strength: {
-      name: 'Strength Building Program',
-      description: 'Progressive overload focus for maximum strength gains',
-      difficulty: 'advanced' as WorkoutDifficulty,
-      schedule: [
-        {
-          id: 'day-1',
-          name: 'Day 1: Deadlift Focus',
-          exercises: [
-            {
-              id: 'ex-1',
-              name: 'Deadlifts',
-              description: 'Lift barbell from ground to hip level',
-              muscleGroup: 'legs',
-              sets: 5,
-              reps: 5,
-              restTime: 180,
-            },
-            {
-              id: 'ex-2',
-              name: 'Romanian Deadlifts',
-              description: 'Deadlift variation with focus on hamstrings',
-              muscleGroup: 'legs',
-              sets: 3,
-              reps: 8,
-              restTime: 120,
-            },
-            {
-              id: 'ex-3',
-              name: 'Good Mornings',
-              description: 'Bend forward with barbell on shoulders',
-              muscleGroup: 'legs',
-              sets: 3,
-              reps: 10,
-              restTime: 90,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-2',
-          name: 'Day 2: Bench Press Focus',
-          exercises: [
-            {
-              id: 'ex-4',
-              name: 'Bench Press',
-              description: 'Press barbell from chest',
-              muscleGroup: 'chest',
-              sets: 5,
-              reps: 5,
-              restTime: 180,
-            },
-            {
-              id: 'ex-5',
-              name: 'Incline Bench Press',
-              description: 'Press on incline bench',
-              muscleGroup: 'chest',
-              sets: 3,
-              reps: 8,
-              restTime: 120,
-            },
-            {
-              id: 'ex-6',
-              name: 'Dips',
-              description: 'Lower body using triceps',
-              muscleGroup: 'arms',
-              sets: 3,
-              reps: 8,
-              restTime: 90,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-3',
-          name: 'Day 3: Rest',
-          exercises: [],
-          restDay: true,
-        },
-        {
-          id: 'day-4',
-          name: 'Day 4: Squat Focus',
-          exercises: [
-            {
-              id: 'ex-7',
-              name: 'Squats',
-              description: 'Lower body by bending knees',
-              muscleGroup: 'legs',
-              sets: 5,
-              reps: 5,
-              restTime: 180,
-            },
-            {
-              id: 'ex-8',
-              name: 'Front Squats',
-              description: 'Squat with barbell in front',
-              muscleGroup: 'legs',
-              sets: 3,
-              reps: 8,
-              restTime: 120,
-            },
-            {
-              id: 'ex-9',
-              name: 'Box Jumps',
-              description: 'Jump onto box and back down',
-              muscleGroup: 'legs',
-              sets: 3,
-              reps: 8,
-              restTime: 90,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-5',
-          name: 'Day 5: Overhead Press Focus',
-          exercises: [
-            {
-              id: 'ex-10',
-              name: 'Military Press',
-              description: 'Press barbell overhead',
-              muscleGroup: 'shoulders',
-              sets: 5,
-              reps: 5,
-              restTime: 180,
-            },
-            {
-              id: 'ex-11',
-              name: 'Push Press',
-              description: 'Press with leg drive',
-              muscleGroup: 'shoulders',
-              sets: 3,
-              reps: 8,
-              restTime: 120,
-            },
-            {
-              id: 'ex-12',
-              name: 'Pull-ups',
-              description: 'Pull body up to bar',
-              muscleGroup: 'back',
-              sets: 3,
-              reps: 8,
-              restTime: 90,
-            },
-          ],
-          restDay: false,
-        },
-        {
-          id: 'day-6',
-          name: 'Day 6: Rest',
-          exercises: [],
-          restDay: true,
-        },
-        {
-          id: 'day-7',
-          name: 'Day 7: Active Recovery',
-          exercises: [
-            {
-              id: 'ex-13',
-              name: 'Light Cardio',
-              description: 'Light jogging or cycling',
-              muscleGroup: 'cardio',
-              sets: 1,
-              reps: 20,
-              restTime: 0,
-            },
-            {
-              id: 'ex-14',
-              name: 'Mobility Work',
-              description: 'Dynamic stretching and mobility',
-              muscleGroup: 'full_body',
-              sets: 1,
-              reps: 15,
-              restTime: 0,
-            },
-          ],
-          restDay: false,
-        },
-      ],
-      duration: duration as WorkoutDuration,
-      specificGoal: specificGoal,
-    },
-  };
+// Helper function to create a workout plan with common properties
+const createWorkoutPlan = (planId: string, specificGoal: SpecificGoal, duration: WorkoutDuration) => 
+  (name: string, description: string, difficulty: WorkoutDifficulty, schedule: any[]): WorkoutPlan => ({
+    id: planId,
+    name,
+    description,
+    difficulty,
+    schedule,
+    duration,
+    specificGoal,
+    isAIGenerated: false
+  });
 
-  return goalPlans[specificGoal] || goalPlans.build_muscle;
+// Base exercise template
+const createExercise = (id: string, name: string, description: string, muscleGroup: string, sets: number, reps: number, restTime: number) => ({
+  id,
+  name,
+  description,
+  muscleGroup,
+  sets,
+  reps,
+  restTime
+});
+
+// Base day template
+const createDay = (id: string, name: string, exercises: any[], restDay = false) => ({
+  id,
+  name,
+  exercises,
+  restDay
+});
+
+// Basic exercise type that matches one of the Exercise union variants
+type BasicExercise = {
+  id: string;
+  name: string;
+  description: string;
+  muscleGroup: string;
+  sets: number;
+  restTime: number;
+} & (
+  | { reps: number; duration?: never; }
+  | { duration: number; reps?: never; }
+  | { reps: number; duration: number; }
+);
+
+// Basic exercises that will be used in the fallback plan
+const BASIC_EXERCISES: BasicExercise[] = [
+  // Upper body
+  { id: 'ex-1', name: 'Push-ups', description: 'Basic push-up exercise', muscleGroup: 'chest', sets: 3, reps: 12, restTime: 45 },
+  { id: 'ex-2', name: 'Dumbbell Rows', description: 'Bend over and row dumbbells', muscleGroup: 'back', sets: 3, reps: 12, restTime: 45 },
+  { id: 'ex-3', name: 'Shoulder Press', description: 'Press dumbbells overhead', muscleGroup: 'shoulders', sets: 3, reps: 12, restTime: 45 },
+  { id: 'ex-4', name: 'Bicep Curls', description: 'Curl dumbbells', muscleGroup: 'biceps', sets: 3, reps: 12, restTime: 30 },
+  { id: 'ex-5', name: 'Tricep Dips', description: 'Use a bench or chair', muscleGroup: 'triceps', sets: 3, reps: 12, restTime: 30 },
+  
+  // Lower body
+  { id: 'ex-6', name: 'Bodyweight Squats', description: 'Basic squat exercise', muscleGroup: 'legs', sets: 3, reps: 15, restTime: 45 },
+  { id: 'ex-7', name: 'Lunges', description: 'Alternating leg lunges', muscleGroup: 'legs', sets: 3, reps: 12, restTime: 45 },
+  { id: 'ex-8', name: 'Glute Bridges', description: 'Lift hips up and squeeze glutes', muscleGroup: 'glutes', sets: 3, reps: 15, restTime: 30 },
+  { id: 'ex-9', name: 'Calf Raises', description: 'Raise up on toes', muscleGroup: 'calves', sets: 3, reps: 20, restTime: 30 },
+  
+  // Core
+  { id: 'ex-10', name: 'Plank', description: 'Hold plank position', muscleGroup: 'core', sets: 3, duration: 30, restTime: 30 },
+  { id: 'ex-11', name: 'Bicycle Crunches', description: 'Alternate elbow to knee', muscleGroup: 'core', sets: 3, reps: 20, restTime: 30 },
+  { id: 'ex-12', name: 'Russian Twists', description: 'Twist side to side', muscleGroup: 'obliques', sets: 3, reps: 20, restTime: 30 },
+  
+  // Cardio
+  { id: 'ex-13', name: 'Jump Rope', description: '3 minutes of jumping', muscleGroup: 'cardio', sets: 3, duration: 180, restTime: 60 },
+  { id: 'ex-14', name: 'Jogging', description: '20 minutes', muscleGroup: 'cardio', sets: 1, duration: 1200, restTime: 0 },
+  { id: 'ex-15', name: 'Mountain Climbers', description: 'Fast feet', muscleGroup: 'core/cardio', sets: 3, reps: 30, restTime: 30 }
+];
+
+// Helper function to convert BasicExercise to Exercise
+const toExercise = (ex: BasicExercise): Exercise => {
+  // TypeScript can now properly infer the correct type
+  return {
+    id: ex.id,
+    name: ex.name,
+    description: ex.description,
+    muscleGroup: ex.muscleGroup,
+    sets: ex.sets,
+    restTime: ex.restTime,
+    ...(ex.reps !== undefined && { reps: ex.reps }),
+    ...(ex.duration !== undefined && { duration: ex.duration })
+  } as Exercise;
+};
+
+const generateFallbackPlan = (specificGoal: SpecificGoal = 'build_muscle', duration: string = '1_month'): WorkoutPlan => {
+  try {
+    console.log('🔄 Generating fallback plan for:', { specificGoal, duration });
+    
+    // Create a new plan ID with timestamp
+    const planId = `fallback-${Date.now()}`;
+    const fitnessLevel = 'intermediate';
+    
+    // Helper function to get exercises by muscle group
+    const getExercisesByGroup = (groups: string[], count: number = 4): Exercise[] => {
+      return BASIC_EXERCISES
+        .filter(ex => groups.some(group => ex.muscleGroup.includes(group)))
+        .slice(0, count)
+        .map(ex => toExercise(ex));
+    };
+    
+    // Create the fallback plan with a 7-day schedule
+    const fallbackPlan: WorkoutPlan = {
+      id: planId,
+      name: `Basic ${specificGoal.split('_').join(' ').toUpperCase()} Plan`,
+      description: `A complete workout plan for ${specificGoal.split('_').join(' ')} with basic exercises`,
+      difficulty: fitnessLevel as WorkoutDifficulty,
+      duration: duration as WorkoutDuration,
+      specificGoal: specificGoal,
+      isAIGenerated: false,
+      exercises: [...BASIC_EXERCISES], // Include all basic exercises
+      schedule: [
+        // Day 1: Upper Body
+        createDay('day-1', 'Day 1: Upper Body', getExercisesByGroup(['chest', 'back', 'shoulders', 'biceps', 'triceps'], 5)),
+        
+        // Day 2: Lower Body
+        createDay('day-2', 'Day 2: Lower Body', getExercisesByGroup(['legs', 'glutes', 'calves'], 4)),
+        
+        // Day 3: Core & Cardio
+        createDay('day-3', 'Day 3: Core & Cardio', [
+          ...getExercisesByGroup(['core', 'obliques'], 3),
+          ...getExercisesByGroup(['cardio'], 1)
+        ]),
+        
+        // Day 4: Active Recovery
+        createDay('day-4', 'Day 4: Active Recovery', [
+          toExercise({
+            ...(BASIC_EXERCISES.find(ex => ex.id === 'ex-14')!), // Walking
+            sets: 1
+          }),
+          toExercise({
+            ...(BASIC_EXERCISES.find(ex => ex.id === 'ex-10')!), // Plank
+            sets: 2,
+            duration: 20
+          })
+        ], true),
+        
+        // Day 5: Full Body
+        createDay('day-5', 'Day 5: Full Body', [
+          ...getExercisesByGroup(['chest', 'back', 'legs'], 1),
+          ...getExercisesByGroup(['core'], 1),
+          ...getExercisesByGroup(['shoulders', 'biceps', 'triceps'], 1)
+        ]),
+        
+        // Day 6: Cardio & Core
+        createDay('day-6', 'Day 6: Cardio & Core', [
+          ...getExercisesByGroup(['cardio'], 2),
+          ...getExercisesByGroup(['core'], 2)
+        ]),
+        
+        // Day 7: Rest Day
+        createDay('day-7', 'Day 7: Rest Day', [], true)
+      ]
+    };
+    
+    console.log('✅ Generated fallback plan with', fallbackPlan.schedule.length, 'days');
+    return fallbackPlan;
+    
+  } catch (error) {
+    console.error('❌ Error generating fallback plan:', error);
+    
+    // Return a minimal valid plan if something goes wrong
+    return {
+      id: `minimal-${Date.now()}`,
+      name: 'Basic Workout Plan',
+      description: 'A simple workout plan to get you started',
+      difficulty: 'beginner',
+      duration: '1_month',
+      specificGoal: 'build_muscle',
+      isAIGenerated: false,
+      exercises: BASIC_EXERCISES.slice(0, 5),
+      schedule: [
+        createDay('day-1', 'Full Body Workout', BASIC_EXERCISES.slice(0, 5)),
+        createDay('day-2', 'Rest Day', [], true),
+        createDay('day-3', 'Full Body Workout', BASIC_EXERCISES.slice(5, 10)),
+        createDay('day-4', 'Rest Day', [], true),
+        createDay('day-5', 'Full Body Workout', BASIC_EXERCISES.slice(10, 15)),
+        createDay('day-6', 'Active Recovery', [BASIC_EXERCISES[13]], true), // Walking
+        createDay('day-7', 'Rest Day', [], true)
+      ]
+    };
+  }
 };
 
 interface WorkoutStore {
@@ -569,7 +204,7 @@ interface WorkoutStore {
   progressMeasurements: Record<string, number> | null; // Post-workout measurements
   
   setCurrentPlan: (plan: WorkoutPlan) => void;
-  generateWorkoutPlan: (specificGoal: SpecificGoal, duration: string, userDetails?: any) => Promise<void>;
+  generateWorkoutPlan: (specificGoal: SpecificGoal, duration: string, userDetails?: any) => Promise<WorkoutPlan>;
   getRecommendedPlans: (specificGoal: SpecificGoal, userDetails?: any) => Promise<void>;
   completeWorkout: (workoutId: string) => void;
   updateWorkoutProgress: (planId: string, progress: number) => void;
@@ -599,69 +234,115 @@ export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       console.log('🏋️ Generating workout plan...');
-      console.log('🎯 Specific goal:', specificGoal);
-      console.log('⏱️ Duration:', duration);
-      console.log('👤 User details:', userDetails);
       
       // Get current user from auth store
       const { user } = useAuthStore.getState();
       if (!user?.id) {
         throw new Error('User not authenticated');
       }
-
-      // Try to generate plan with AI first
-      try {
-        // This would be the AI endpoint call
-        // const aiPlan = await aiAPI.createRequest({
-        //   specificGoal,
-        //   duration,
-        //   userDetails
-        // });
-        // set({ currentPlan: aiPlan });
-        // return;
-      } catch (aiError) {
-        console.log('🤖 AI generation failed, using fallback plan');
+      
+      // Set a default specificGoal if none provided
+      if (!specificGoal) {
+        specificGoal = user?.specificGoal || 'build_muscle';
+        console.warn('⚠️ No specific goal provided, using:', specificGoal);
       }
+      
+      console.log('🎯 Using specific goal:', specificGoal);
+      console.log('⏱️ Duration:', duration);
+      console.log('👤 User details:', userDetails);
 
-      // Get user's fitness level for plan selection
-      const fitnessLevel = userDetails?.fitnessLevel || user?.fitnessLevel || 'intermediate';
+      let selectedPlan: WorkoutPlan;
       
-      // Get predefined plans for this goal and fitness level
-      const predefinedPlans = getPredefinedPlans(specificGoal, fitnessLevel as WorkoutDifficulty);
-      
-      // Select the best matching plan or generate a fallback
-      let selectedPlan;
-      if (predefinedPlans.length > 0) {
-        // Find a plan that matches the duration, or use the first one
-        selectedPlan = predefinedPlans.find(plan => plan.duration === duration) || predefinedPlans[0];
-        console.log('📋 Selected predefined plan:', selectedPlan.name);
-      } else {
-        // Fallback to generated plan
+      try {
+        // First try to get predefined plans
+        const fitnessLevel = userDetails?.fitnessLevel || 'intermediate';
+        console.log('🔍 Looking for plans with:', { goal: specificGoal, level: fitnessLevel });
+        
+        const predefinedPlans = getPredefinedPlans(specificGoal, fitnessLevel as WorkoutDifficulty);
+        console.log('📋 Found predefined plans:', predefinedPlans?.length || 0);
+        
+        if (predefinedPlans?.length > 0) {
+          // Try to find a plan matching the duration, or take the first one
+          selectedPlan = predefinedPlans.find(plan => plan.duration === duration) || predefinedPlans[0];
+          console.log('✅ Selected predefined plan:', selectedPlan.name);
+        } else {
+          // If no predefined plans, generate a fallback
+          console.log('ℹ️ No predefined plans found, generating fallback plan');
+          selectedPlan = generateFallbackPlan(specificGoal, duration);
+        }
+      } catch (error) {
+        console.error('❌ Error getting predefined plans, using fallback:', error);
         selectedPlan = generateFallbackPlan(specificGoal, duration);
-        console.log('📋 Generated fallback plan:', selectedPlan.name);
       }
       
-      // Save plan to database
-      try {
-        await workoutAPI.createPlan({
-          name: selectedPlan.name,
-          description: selectedPlan.description,
-          difficulty: selectedPlan.difficulty,
-          duration: selectedPlan.duration,
-          specific_goal: specificGoal,
-          is_ai_generated: true, // Mark as AI generated
-          ai_prompt_used: JSON.stringify(userDetails), // Store user details as prompt
-          created_by: user.id // Use the authenticated user's ID
-        });
-        console.log('✅ Workout plan saved to database');
-      } catch (dbError) {
-        console.error('❌ Failed to save plan to database:', dbError);
+      // Ensure we have a valid plan
+      if (!selectedPlan) {
+        console.error('❌ Failed to generate workout plan, using empty fallback');
+        selectedPlan = generateFallbackPlan('build_muscle', duration || '1_month');
       }
       
-      set({ currentPlan: selectedPlan, isLoading: false });
+      // Add required fields if missing
+      const finalPlan: WorkoutPlan = {
+        id: selectedPlan.id || `plan-${Date.now()}`,
+        name: selectedPlan.name || `Custom ${specificGoal.split('_').join(' ')} Plan`,
+        description: selectedPlan.description || `A workout plan for ${specificGoal.split('_').join(' ')}`,
+        difficulty: selectedPlan.difficulty || 'intermediate',
+        duration: (duration as WorkoutDuration) || '1_month',
+        specificGoal: specificGoal as SpecificGoal,
+        schedule: Array.isArray(selectedPlan.schedule) ? selectedPlan.schedule : [],
+        isAIGenerated: false,
+        exercises: selectedPlan.exercises || []
+      };
+      
+      // Validate schedule
+      if (!Array.isArray(finalPlan.schedule)) {
+        console.warn('⚠️ Invalid schedule format, initializing empty schedule');
+        finalPlan.schedule = [];
+      }
+      
+      console.log('📋 Final plan details:', {
+        id: finalPlan.id,
+        name: finalPlan.name,
+        scheduleLength: finalPlan.schedule?.length,
+        exercises: finalPlan.exercises?.length
+      });
+      
+      // Save the plan to the backend if we have a user
+      if (user?.id) {
+        try {
+          await workoutAPI.createPlan({
+            name: finalPlan.name,
+            description: finalPlan.description,
+            difficulty: finalPlan.difficulty,
+            duration: finalPlan.duration,
+            specific_goal: specificGoal,
+            is_ai_generated: false,
+            created_by: user.id,
+            schedule: finalPlan.schedule || []
+          });
+          console.log('✅ Workout plan saved to database');
+        } catch (dbError) {
+          console.error('❌ Failed to save plan to database, continuing with local plan:', dbError);
+          // Continue with local plan even if saving fails
+        }
+      }
+      
+      // Update the store with the new plan
+      set({ 
+        currentPlan: selectedPlan, 
+        isLoading: false 
+      });
+      console.log('🔄 Current plan updated in store');
+      
+      return selectedPlan;
+      
     } catch (error: any) {
       console.error('❌ Workout plan generation failed:', error);
-      set({ error: error.message, isLoading: false });
+      set({ 
+        error: error.message || 'Failed to generate workout plan', 
+        isLoading: false 
+      });
+      throw error; // Re-throw to allow error handling in the component
     }
   },
 
@@ -758,34 +439,36 @@ export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
       if (userPlans.length > 0) {
         set({ currentPlan: userPlans[0] });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to load user plans:', error);
     }
   },
 
-  saveWorkoutProgress: async (planId, progressPercentage) => {
+  saveWorkoutProgress: async (progressData: { planId: string; progressPercentage: number }) => {
     try {
-      console.log('💾 Saving workout progress to database...');
+      set({ isLoading: true });
       
-      // Prepare the progress data
-      const progressData = {
-        plan_id: planId,
-        progress_percentage: progressPercentage,
-        date: new Date().toISOString().split('T')[0], // Format as YYYY-MM-DD
-        notes: ''
-      };
+      // In a real app, this would be an API call to save progress
+      // await workoutAPI.saveProgress({
+      //   planId: progressData.planId,
+      //   progressPercentage: progressData.progressPercentage,
+      //   completedAt: new Date().toISOString()
+      // });
       
-      const result = await workoutAPI.saveProgress(progressData);
-      console.log('✅ Workout progress saved:', result);
+      // For now, just update local state
+      set(state => ({
+        workoutProgress: {
+          ...state.workoutProgress,
+          [progressData.planId]: progressData.progressPercentage
+        }
+      }));
       
-      // Update local state
-      const { workoutProgress } = get();
-      set({ workoutProgress: { ...workoutProgress, [planId]: progressPercentage } });
-    } catch (error) {
-      console.error('❌ Failed to save workout progress:', error);
-      // Update local state even if API call fails
-      const { workoutProgress } = get();
-      set({ workoutProgress: { ...workoutProgress, [planId]: progressPercentage } });
+      console.log(`💾 Saved progress for plan ${progressData.planId}: ${progressData.progressPercentage}%`);
+    } catch (error: any) {
+      console.error('Error saving workout progress:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 

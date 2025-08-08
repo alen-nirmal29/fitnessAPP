@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Platform, SafeAreaView } from 'react-native';
 import { ScrollView as RNScrollView } from 'react-native';
 import { router } from 'expo-router';
@@ -13,35 +13,64 @@ import BackButton from '@/components/BackButton';
 
 export default function PlanGeneratorScreen() {
   const { user } = useAuthStore();
-  const { generateWorkoutPlan, isLoading, error } = useWorkoutStore();
+  const { generateWorkoutPlan, isLoading, error: storeError } = useWorkoutStore();
   
   const [message, setMessage] = useState('');
   const [duration, setDuration] = useState('1_month');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const scrollViewRef = useRef<RNScrollView>(null);
 
   const handleGeneratePlan = async () => {
-    if (!user?.specificGoal) return;
-    
     setIsGenerating(true);
+    setError(null); // Clear any previous errors
+    
     try {
-      // Prepare user details for AI
+      // Set default values if user is not available
+      const defaultSpecificGoal = 'build_muscle' as const;
+      const userSpecificGoal = user?.specificGoal || defaultSpecificGoal;
+      
+      if (!user?.specificGoal) {
+        console.log('⚠️ No specific goal set for user, using default:', defaultSpecificGoal);
+      }
+      
+      // Prepare user details with safe defaults
       const userDetails = {
-        age: user.age,
-        gender: user.gender,
-        height: user.height,
-        weight: user.weight,
-        fitnessLevel: user.fitnessLevel,
-        bodyFat: user.bodyFat,
-        currentMeasurements: user.currentMeasurements,
-        goalMeasurements: user.goalMeasurements,
-        specificGoal: user.specificGoal,
+        // Basic user info with null checks
+        age: user?.age,
+        gender: user?.gender,
+        height: user?.height,
+        weight: user?.weight,
+        fitnessLevel: user?.fitnessLevel || 'intermediate',
+        bodyFat: user?.bodyFat,
+        currentMeasurements: user?.currentMeasurements || {},
+        goalMeasurements: user?.goalMeasurements || {},
+        specificGoal: userSpecificGoal,
         additionalNotes: message,
       };
       
+      console.log('🚀 Starting plan generation with details:', {
+        specificGoal: user.specificGoal,
+        duration,
+        userDetails
+      });
+      
+      // Generate the workout plan
       await generateWorkoutPlan(user.specificGoal, duration, userDetails);
-      router.push('/workout/plan-details');
-    } catch (err) {
-      console.error('Error generating plan:', err);
+      
+      // Navigate to plan details after successful generation
+      console.log('✅ Plan generated successfully, navigating to details');
+      router.replace('/workout/plan-details');
+      
+    } catch (err: any) {
+      console.error('❌ Error generating plan:', err);
+      setError(err.message || 'Failed to generate workout plan. Please try again.');
+      
+      // Scroll to top to show error
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      
+      // Re-throw the error to be caught by any parent error boundaries
+      throw err;
     } finally {
       setIsGenerating(false);
     }
@@ -68,10 +97,12 @@ export default function PlanGeneratorScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <ScrollView 
+          ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           {/* Header Section */}
           <View style={styles.header}>
@@ -155,8 +186,16 @@ export default function PlanGeneratorScreen() {
           {error && (
             <Card style={styles.errorCard}>
               <Text style={styles.errorText}>
-                {error}
+                ⚠️ {error}
               </Text>
+              <Button
+                title="Try Again"
+                onPress={handleGeneratePlan}
+                variant="outline"
+                size="small"
+                style={styles.retryButton}
+                textStyle={styles.retryButtonText}
+              />
             </Card>
           )}
 
@@ -326,6 +365,14 @@ const styles = StyleSheet.create({
     color: Colors.dark.error,
     fontSize: 14,
     textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 12,
+    alignSelf: 'center',
+  },
+  retryButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   generatingCard: {
     marginBottom: 24,

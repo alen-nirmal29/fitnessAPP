@@ -60,6 +60,7 @@ export default function ProfileScreen() {
         height: Number(height),
         weight: Number(weight),
         gender: gender as Gender,
+        hasCompletedOnboarding: true, // Add the flag to mark onboarding as completed
       });
       
       // Also save to database for persistence
@@ -68,6 +69,7 @@ export default function ProfileScreen() {
         height: Number(height),
         weight: Number(weight),
         gender: gender as Gender,
+        hasCompletedOnboarding: true, // Add the flag to mark onboarding as completed
       }, 'profile');
       
       console.log('Profile updated successfully, navigating to goals page...');

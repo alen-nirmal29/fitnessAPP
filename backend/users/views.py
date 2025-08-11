@@ -181,7 +181,8 @@ class UserProfileUpdateView(generics.UpdateAPIView):
             'age': 'age',
             'fitness_level': 'fitness_level',
             'fitnessGoal': 'fitness_goal',
-            'specificGoal': 'specific_goal'
+            'specificGoal': 'specific_goal',
+            'hasCompletedOnboarding': 'has_completed_onboarding'
         }
         
         for frontend_field, backend_field in field_mapping.items():

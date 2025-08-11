@@ -24,12 +24,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
     # Frontend field names (camelCase)
     fitnessGoal = serializers.CharField(source='fitness_goal', required=False)
     specificGoal = serializers.CharField(source='specific_goal', required=False)
+    hasCompletedOnboarding = serializers.BooleanField(source='has_completed_onboarding', required=False)
     
     class Meta:
         model = User
         fields = [
             'height', 'weight', 'gender', 'age', 'fitness_level',
-            'fitnessGoal', 'specificGoal'
+            'fitnessGoal', 'specificGoal', 'hasCompletedOnboarding'
         ]
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -160,4 +161,4 @@ class OnboardingStepSerializer(serializers.Serializer):
         valid_steps = ['profile', 'goals', 'body_composition', 'body_model', 'specific_goals']
         if value not in valid_steps:
             raise serializers.ValidationError(f"Invalid step. Must be one of: {valid_steps}")
-        return value 
+        return value

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setErrorState] = useState<string | null>(null);
   const [hasNavigated, setHasNavigated] = useState(false);
+  const navigationAttempted = useRef(false);
 
   const { login, loginWithGoogle, isAuthenticated, isInitialized, user } = useAuthStore();
 
@@ -52,26 +53,26 @@ export default function LoginScreen() {
         try {
           // Use the backend API for Google authentication
           await loginWithGoogle(response.params.id_token);
+          console.log('Google login API call completed');
           
-          // Get the updated user state after login
-          const { user, isAuthenticated } = useAuthStore.getState();
-          console.log('Google login successful, user:', user);
-          console.log('isAuthenticated:', isAuthenticated);
+          // Get the updated user state directly after Google login
+          const { user } = useAuthStore.getState();
+          console.log('User after Google login:', user);
           
-          if (isAuthenticated && user) {
+          if (user) {
             console.log('hasCompletedOnboarding:', user.hasCompletedOnboarding);
             setHasNavigated(true);
             
-            // Use a more reliable navigation approach
+            // Immediate navigation based on onboarding status
             if (user.hasCompletedOnboarding) {
-              console.log('Redirecting to main app');
+              console.log('User has completed onboarding, redirecting to main app');
               router.replace('/(tabs)');
             } else {
-              console.log('Redirecting to onboarding');
+              console.log('User has not completed onboarding, redirecting to onboarding');
               router.replace('/onboarding/profile');
             }
           } else {
-            console.log('User not properly authenticated, staying on login screen');
+            console.log('No user data available after Google login');
           }
         } catch (e: any) {
           console.error('Google sign-in error:', e);
@@ -86,13 +87,43 @@ export default function LoginScreen() {
     }
   }, [response]);
 
-  // Redirect logged in users away from login screen
+  // Initialize auth state on component mount
   useEffect(() => {
-    if (isInitialized && isAuthenticated && user && !hasNavigated) {
+    console.log('Login component mounted, initializing auth state');
+    useAuthStore.getState().checkAuthState();
+  }, []);
+
+  // Debug logging for auth state changes
+  useEffect(() => {
+    console.log('Auth state changed:', {
+      isInitialized,
+      isAuthenticated,
+      hasUser: !!user,
+      hasCompletedOnboarding: user?.hasCompletedOnboarding,
+      hasNavigated
+    });
+  }, [isInitialized, isAuthenticated, user, hasNavigated]);
+
+  // Single effect for handling navigation based on auth state
+  useEffect(() => {
+    // Only proceed if auth is initialized
+    if (!isInitialized) {
+      console.log('Auth not yet initialized, waiting...');
+      return;
+    }
+
+    // Check if we should navigate
+    if (isAuthenticated && user && !hasNavigated && !navigationAttempted.current) {
+      console.log('Navigation conditions met, preparing to navigate');
+      navigationAttempted.current = true;
+      
+      // Determine destination based on onboarding status
+      const destination = user.hasCompletedOnboarding ? '/(tabs)' : '/onboarding/profile';
+      console.log(`Navigating to: ${destination}`);
+      
+      // Set hasNavigated flag and navigate
+      router.replace(destination);
       setHasNavigated(true);
-      setTimeout(() => {
-        router.replace('/(tabs)');
-      }, 1500); // Increased delay
     }
   }, [isInitialized, isAuthenticated, user, hasNavigated]);
 
@@ -122,33 +153,29 @@ export default function LoginScreen() {
     setErrorState(null);
     try {
       await login(email, password);
+      console.log('Login API call completed');
       
-      // Get the updated user state after login
-      const { user, isAuthenticated } = useAuthStore.getState();
-      console.log('Login successful, user:', user);
-      console.log('isAuthenticated:', isAuthenticated);
-      console.log('hasCompletedOnboarding:', user?.hasCompletedOnboarding);
+      // Get the updated user state directly after login
+      const { user } = useAuthStore.getState();
+      console.log('User after login:', user);
       
-      // Check authentication state
-      const authState = useAuthStore.getState().checkAuthState();
-      console.log('Current auth state after login:', authState);
-      
-      if (isAuthenticated && user) {
+      if (user) {
+        console.log('hasCompletedOnboarding:', user.hasCompletedOnboarding);
         setHasNavigated(true);
-        // Add longer delay to ensure navigation happens after component is ready
-        setTimeout(() => {
-          if (user.hasCompletedOnboarding) {
-            console.log('User has completed onboarding, redirecting to main app');
-            router.replace('/(tabs)');
-          } else {
-            console.log('User has not completed onboarding, redirecting to onboarding');
-            router.replace('/onboarding/profile');
-          }
-        }, 1500); // Increased delay
+        
+        // Immediate navigation based on onboarding status
+        if (user.hasCompletedOnboarding) {
+          console.log('User has completed onboarding, redirecting to main app');
+          router.replace('/(tabs)');
+        } else {
+          console.log('User has not completed onboarding, redirecting to onboarding');
+          router.replace('/onboarding/profile');
+        }
       } else {
-        console.log('User not properly authenticated, staying on login screen');
+        console.log('No user data available after login');
       }
     } catch (e: any) {
+      console.error('Login error:', e);
       setErrorState(e.message || 'Login failed');
     } finally {
       setIsLoading(false);

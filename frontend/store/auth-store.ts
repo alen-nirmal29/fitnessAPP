@@ -243,11 +243,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       console.log('💾 Tokens stored, setting user...');
       get().setUser(data.user, data.tokens.access, data.tokens.refresh);
       
-      // Fetch complete profile to ensure all user data is available
+      // Fetch complete profile to ensure all user data is available, including hasCompletedOnboarding
       try {
         console.log('🔄 Fetching complete profile after login...');
         await get().fetchCompleteProfile();
         console.log('✅ Complete profile fetched successfully after login');
+        
+        // Explicitly log the onboarding status
+        const currentUser = get().user;
+        console.log('📋 User onboarding status after profile fetch:', 
+          currentUser?.hasCompletedOnboarding ? 'Completed' : 'Not completed');
       } catch (profileError) {
         console.error('⚠️ Error fetching complete profile after login:', profileError);
         // Continue even if profile fetch fails
@@ -328,11 +333,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       console.log('👤 Setting user in store...');
       get().setUser(data.user, data.tokens.access, data.tokens.refresh);
       
-      // Fetch complete profile to ensure all user data is available
+      // Fetch complete profile to ensure all user data is available, including hasCompletedOnboarding
       try {
         console.log('🔄 Fetching complete profile after Google login...');
         await get().fetchCompleteProfile();
         console.log('✅ Complete profile fetched successfully after Google login');
+        
+        // Explicitly log the onboarding status
+        const currentUser = get().user;
+        console.log('📋 User onboarding status after Google login:', 
+          currentUser?.hasCompletedOnboarding ? 'Completed' : 'Not completed');
       } catch (profileError) {
         console.error('⚠️ Error fetching complete profile after Google login:', profileError);
         // Continue even if profile fetch fails
@@ -381,10 +391,24 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
 
     try {
+      console.log('🔄 Updating user profile with data:', profile);
+      // Check if we're updating the onboarding status
+      if (profile.hasCompletedOnboarding !== undefined) {
+        console.log('📋 Updating hasCompletedOnboarding flag to:', profile.hasCompletedOnboarding);
+      }
+      
       const updatedUser = await authAPI.updateProfile(profile);
-      set({ user: updatedUser });
+      console.log('✅ Profile updated successfully:', updatedUser);
+      
+      // Ensure the updated user has the correct hasCompletedOnboarding value
+      set({ 
+        user: {
+          ...updatedUser,
+          hasCompletedOnboarding: updatedUser.hasCompletedOnboarding || profile.hasCompletedOnboarding || user.hasCompletedOnboarding
+        } 
+      });
     } catch (error: any) {
-      console.error('Profile update error:', error);
+      console.error('❌ Profile update error:', error);
       throw error;
     }
   },
@@ -397,12 +421,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
 
     try {
+      // Check if we're updating the onboarding status
+      if (data.hasCompletedOnboarding !== undefined) {
+        console.log('📋 Saving hasCompletedOnboarding flag:', data.hasCompletedOnboarding);
+      }
+      
       // Update the user profile with new data
       const updatedUser = await authAPI.updateProfile(data);
       console.log('✅ User data saved successfully:', updatedUser);
       
-      // Update local state
-      set({ user: updatedUser });
+      // Update local state, ensuring hasCompletedOnboarding is preserved
+      set({ 
+        user: {
+          ...updatedUser,
+          hasCompletedOnboarding: updatedUser.hasCompletedOnboarding || data.hasCompletedOnboarding || user.hasCompletedOnboarding
+        } 
+      });
     } catch (error: any) {
       console.error('❌ Error saving user data:', error);
       throw error;
@@ -414,6 +448,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       console.log('🔄 Fetching user profile...');
       const profileData = await authAPI.getProfile();
       console.log('📥 Profile data received:', profileData);
+      
+      // Explicitly log the onboarding status from backend
+      console.log('📋 Backend has_completed_onboarding value:', profileData.has_completed_onboarding);
       
       const transformedUser: UserProfile = {
         id: profileData.id.toString(),
@@ -428,6 +465,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       };
       
       console.log('📤 Transformed user data:', transformedUser);
+      console.log('📋 Frontend hasCompletedOnboarding value:', transformedUser.hasCompletedOnboarding);
+      
+      // Preserve the current user's hasCompletedOnboarding value if the backend returns undefined/null
+      const currentUser = get().user;
+      if (currentUser && profileData.has_completed_onboarding === undefined) {
+        transformedUser.hasCompletedOnboarding = currentUser.hasCompletedOnboarding || false;
+      }
+      
       set({ user: transformedUser });
       console.log('✅ Profile fetched and stored successfully');
     } catch (error: any) {
@@ -438,7 +483,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   fetchCompleteProfile: async () => {
     try {
+      console.log('🔄 Fetching complete user profile...');
       const profileData = await authAPI.getCompleteProfile();
+      console.log('📥 Complete profile data received:', profileData);
+      
+      // Explicitly log the onboarding status from backend
+      console.log('📋 Backend has_completed_onboarding value:', profileData.has_completed_onboarding);
       
       const transformedUser: UserProfile = {
         id: profileData.id.toString(),
@@ -452,9 +502,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         hasCompletedOnboarding: profileData.has_completed_onboarding || false,
       };
       
+      console.log('📤 Transformed complete user data:', transformedUser);
+      console.log('📋 Frontend hasCompletedOnboarding value:', transformedUser.hasCompletedOnboarding);
+      
+      // Preserve the current user's hasCompletedOnboarding value if the backend returns undefined/null
+      const currentUser = get().user;
+      if (currentUser && profileData.has_completed_onboarding === undefined) {
+        transformedUser.hasCompletedOnboarding = currentUser.hasCompletedOnboarding || false;
+      }
+      
       set({ user: transformedUser });
+      console.log('✅ Complete profile fetched and stored successfully');
     } catch (error: any) {
-      console.error('Complete profile fetch error:', error);
+      console.error('❌ Complete profile fetch error:', error);
       throw error;
     }
   },
@@ -479,8 +539,24 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           });
         }
       } else {
-        // Just update the onboarding flag in the store
-        set({ isInOnboarding: false });
+        // If no user data returned, update the current user with the flag
+        const currentUser = get().user;
+        if (currentUser) {
+          // Update the backend with the hasCompletedOnboarding flag
+          await authAPI.updateProfile({ hasCompletedOnboarding: true });
+          
+          // Update local state
+          set({
+            user: {
+              ...currentUser,
+              hasCompletedOnboarding: true
+            },
+            isInOnboarding: false
+          });
+        } else {
+          // Just update the onboarding flag in the store
+          set({ isInOnboarding: false });
+        }
       }
       
       // Fetch complete profile to ensure all user data is available

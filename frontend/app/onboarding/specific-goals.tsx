@@ -11,7 +11,7 @@ import { SpecificGoal } from '@/types/user';
 import BackButton from '@/components/BackButton';
 
 export default function SpecificGoalsScreen() {
-  const { updateProfile, completeOnboarding, user, setInOnboarding } = useAuthStore();
+  const { updateProfile, completeOnboarding, fetchCompleteProfile, user, setInOnboarding } = useAuthStore();
   const [selectedGoal, setSelectedGoal] = useState<SpecificGoal | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,18 +32,23 @@ export default function SpecificGoalsScreen() {
       try {
         console.log('Updating specific goal...');
         
+        // First, update the profile with the specific goal
         await updateProfile({
           specificGoal: selectedGoal,
         });
         
         console.log('Specific goal updated, completing onboarding...');
         
-        completeOnboarding();
+        // Then, complete the onboarding process
+        await completeOnboarding();
+        
+        // Fetch the complete profile to ensure all user data is up to date
+        await fetchCompleteProfile();
         
         console.log('Onboarding completed, navigating to workout plan selection...');
         
         // Navigate to workout plan selection using replace to prevent navigation stack issues
-        router.replace('/workout/plan-selection');
+        router.replace('/(tabs)');
         
       } catch (error) {
         console.error('Error completing onboarding:', error);

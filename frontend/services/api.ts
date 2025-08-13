@@ -166,8 +166,20 @@ export const authAPI = {
     return apiRequest(AUTH_ENDPOINTS.PROFILE_COMPLETE, 'GET');
   },
   
-  updateProfile: async (data: any) => {
-    return apiRequest(AUTH_ENDPOINTS.PROFILE_UPDATE, 'PUT', data);
+  updateProfile: async (profile: any) => {
+    // Convert camelCase keys to snake_case keys before sending to backend
+    const payload = { 
+      ...(profile.name !== undefined ? { first_name: profile.name } : {}), 
+      ...(profile.gender !== undefined ? { gender: profile.gender } : {}), 
+      ...(profile.height !== undefined ? { height: profile.height } : {}), 
+      ...(profile.weight !== undefined ? { weight: profile.weight } : {}), 
+      ...(profile.fitnessGoal !== undefined ? { fitness_goal: profile.fitnessGoal } : {}), 
+      ...(profile.specificGoal !== undefined ? { specific_goal: profile.specificGoal } : {}), 
+      ...(profile.hasCompletedOnboarding !== undefined 
+        ? { has_completed_onboarding: profile.hasCompletedOnboarding } 
+        : {}), 
+    };
+    return apiRequest(AUTH_ENDPOINTS.PROFILE_UPDATE, 'PUT', payload);
   },
   
   updateOnboardingStep: async (data: any) => {
@@ -329,4 +341,4 @@ export const apiService = {
   workout: workoutAPI,
   progress: progressAPI,
   ai: aiAPI,
-}; 
+};

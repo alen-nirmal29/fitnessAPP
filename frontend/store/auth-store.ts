@@ -4,6 +4,19 @@ import { Alert } from 'react-native';
 import { AuthState, UserProfile } from '@/types/user';
 import { authAPI } from '@/services/api';
 
+// Helper function to transform backend user data to frontend format
+const transformUserFromApi = (u: any): UserProfile => ({
+  id: (u.id ?? u.user_id ?? '').toString(),
+  email: u.email,
+  name: u.first_name || u.name || '',
+  height: u.height,
+  weight: u.weight,
+  gender: u.gender,
+  fitnessGoal: u.fitness_goal ?? u.fitnessGoal,
+  specificGoal: u.specific_goal ?? u.specificGoal,
+  hasCompletedOnboarding: !!(u.has_completed_onboarding ?? u.hasCompletedOnboarding),
+});
+
 interface AuthStore extends AuthState {
   isInitialized: boolean;
   isInOnboarding: boolean;
@@ -128,18 +141,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     console.log('🔄 Transforming backend user data to frontend format...');
     console.log('📥 Backend user data:', user);
     
-    // Transform backend user data to frontend format
-    const transformedUser: UserProfile = {
-      id: user.id.toString(),
-      email: user.email,
-      name: user.first_name || user.name || '',
-      height: user.height,
-      weight: user.weight,
-      gender: user.gender,
-      fitnessGoal: user.fitness_goal,
-      specificGoal: user.specific_goal,
-      hasCompletedOnboarding: user.has_completed_onboarding || false,
-    };
+    // Transform backend user data to frontend format using the helper function
+    const transformedUser = transformUserFromApi(user);
     
     console.log('📤 Transformed user data:', transformedUser);
     console.log('🔐 Setting authentication state...');
@@ -400,13 +403,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const updatedUser = await authAPI.updateProfile(profile);
       console.log('✅ Profile updated successfully:', updatedUser);
       
-      // Ensure the updated user has the correct hasCompletedOnboarding value
-      set({ 
-        user: {
-          ...updatedUser,
-          hasCompletedOnboarding: updatedUser.hasCompletedOnboarding || profile.hasCompletedOnboarding || user.hasCompletedOnboarding
-        } 
-      });
+      // Transform the updated user data and set it in the store
+      const transformedUser = transformUserFromApi(updatedUser);
+      
+      // If the backend didn't return hasCompletedOnboarding but we're trying to update it,
+      // ensure it's preserved from the profile parameter
+      if (profile.hasCompletedOnboarding !== undefined && !updatedUser.has_completed_onboarding) {
+        transformedUser.hasCompletedOnboarding = profile.hasCompletedOnboarding;
+      }
+      
+      set({ user: transformedUser });
     } catch (error: any) {
       console.error('❌ Profile update error:', error);
       throw error;
@@ -430,13 +436,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const updatedUser = await authAPI.updateProfile(data);
       console.log('✅ User data saved successfully:', updatedUser);
       
-      // Update local state, ensuring hasCompletedOnboarding is preserved
-      set({ 
-        user: {
-          ...updatedUser,
-          hasCompletedOnboarding: updatedUser.hasCompletedOnboarding || data.hasCompletedOnboarding || user.hasCompletedOnboarding
-        } 
-      });
+      // Transform the updated user data and set it in the store
+      const transformedUser = transformUserFromApi(updatedUser);
+      
+      // If the backend didn't return hasCompletedOnboarding but we're trying to update it,
+      // ensure it's preserved from the data parameter
+      if (data.hasCompletedOnboarding !== undefined && !updatedUser.has_completed_onboarding) {
+        transformedUser.hasCompletedOnboarding = data.hasCompletedOnboarding;
+      }
+      
+      set({ user: transformedUser });
     } catch (error: any) {
       console.error('❌ Error saving user data:', error);
       throw error;
@@ -452,17 +461,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       // Explicitly log the onboarding status from backend
       console.log('📋 Backend has_completed_onboarding value:', profileData.has_completed_onboarding);
       
-      const transformedUser: UserProfile = {
-        id: profileData.id.toString(),
-        email: profileData.email,
-        name: profileData.first_name || profileData.name || '',
-        height: profileData.height,
-        weight: profileData.weight,
-        gender: profileData.gender,
-        fitnessGoal: profileData.fitness_goal,
-        specificGoal: profileData.specific_goal,
-        hasCompletedOnboarding: profileData.has_completed_onboarding || false,
-      };
+      // Transform backend user data to frontend format using the helper function
+      const transformedUser = transformUserFromApi(profileData);
       
       console.log('📤 Transformed user data:', transformedUser);
       console.log('📋 Frontend hasCompletedOnboarding value:', transformedUser.hasCompletedOnboarding);
@@ -490,17 +490,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       // Explicitly log the onboarding status from backend
       console.log('📋 Backend has_completed_onboarding value:', profileData.has_completed_onboarding);
       
-      const transformedUser: UserProfile = {
-        id: profileData.id.toString(),
-        email: profileData.email,
-        name: profileData.first_name || profileData.name || '',
-        height: profileData.height,
-        weight: profileData.weight,
-        gender: profileData.gender,
-        fitnessGoal: profileData.fitness_goal,
-        specificGoal: profileData.specific_goal,
-        hasCompletedOnboarding: profileData.has_completed_onboarding || false,
-      };
+      // Transform backend user data to frontend format using the helper function
+      const transformedUser = transformUserFromApi(profileData);
       
       console.log('📤 Transformed complete user data:', transformedUser);
       console.log('📋 Frontend hasCompletedOnboarding value:', transformedUser.hasCompletedOnboarding);

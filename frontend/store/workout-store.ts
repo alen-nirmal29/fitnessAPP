@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { workoutAPI } from '@/services/api';
+import { workoutAPI, progressAPI } from '@/services/api';
 import { WorkoutPlan, WorkoutDay, Exercise, WorkoutDifficulty, WorkoutDuration } from '@/types/workout';
 import { getPredefinedPlans } from '@/constants/workouts';
 import { SpecificGoal } from '@/types/user';
@@ -202,6 +202,7 @@ interface WorkoutStore {
   completedWorkouts: string[]; // Array of completed workout IDs
   workoutProgress: Record<string, number>; // Progress percentage for each workout plan
   progressMeasurements: Record<string, number> | null; // Post-workout measurements
+  completedWorkoutHistory: any[]; // Array of completed workouts with details
   
   setCurrentPlan: (plan: WorkoutPlan) => void;
   generateWorkoutPlan: (specificGoal: SpecificGoal, duration: string, userDetails?: any) => Promise<WorkoutPlan>;
@@ -210,8 +211,10 @@ interface WorkoutStore {
   updateWorkoutProgress: (planId: string, progress: number) => void;
   generateProgressMeasurements: (originalMeasurements: Record<string, number>, goal: SpecificGoal, progress: number) => void;
   loadUserPlans: () => Promise<void>;
-  saveWorkoutProgress: (progressData: any) => Promise<void>;
+  saveWorkoutProgress: (planId: string, progress: number) => Promise<void>;
   getWorkoutStats: () => Promise<any>;
+  fetchWorkoutProgress: () => Promise<void>;
+  addCompletedWorkout: (workoutData: any) => Promise<void>;
 }
 
 export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
@@ -219,9 +222,10 @@ export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
   recommendedPlans: [],
   isLoading: false,
   error: null,
-  completedWorkouts: [],
+  completedWorkouts: {},
   workoutProgress: {},
-  progressMeasurements: null,
+  progressMeasurements: {},
+  completedWorkoutHistory: [],
 
   setCurrentPlan: (plan) => {
     console.log('📋 Setting current plan:', plan);
@@ -439,31 +443,34 @@ export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
       if (userPlans.length > 0) {
         set({ currentPlan: userPlans[0] });
       }
+      
+      // Also load workout progress history
+      await get().fetchWorkoutProgress();
     } catch (error: any) {
       console.error('❌ Failed to load user plans:', error);
     }
   },
 
-  saveWorkoutProgress: async (progressData: { planId: string; progressPercentage: number }) => {
+  saveWorkoutProgress: async (planId: string, progressPercentage: number) => {
     try {
       set({ isLoading: true });
       
-      // In a real app, this would be an API call to save progress
-      // await workoutAPI.saveProgress({
-      //   planId: progressData.planId,
-      //   progressPercentage: progressData.progressPercentage,
-      //   completedAt: new Date().toISOString()
-      // });
+      // Save progress to the backend
+      await workoutAPI.saveProgress({
+        plan_id: planId,
+        progress_percentage: progressPercentage,
+        completed_at: new Date().toISOString()
+      });
       
-      // For now, just update local state
+      // Update local state
       set(state => ({
         workoutProgress: {
           ...state.workoutProgress,
-          [progressData.planId]: progressData.progressPercentage
+          [planId]: progressPercentage
         }
       }));
       
-      console.log(`💾 Saved progress for plan ${progressData.planId}: ${progressData.progressPercentage}%`);
+      console.log(`💾 Saved progress for plan ${planId}: ${progressPercentage}%`);
     } catch (error: any) {
       console.error('Error saving workout progress:', error);
       throw error;
@@ -481,6 +488,59 @@ export const useWorkoutStore = create<WorkoutStore>((set, get) => ({
     } catch (error) {
       console.error('❌ Failed to get workout stats:', error);
       throw error;
+    }
+  },
+
+  fetchWorkoutProgress: async () => {
+    try {
+      console.log('🔄 Fetching workout progress history...');
+      set({ isLoading: true });
+      
+      const response = await progressAPI.getCompletedWorkouts();
+      
+      if (response && response.workouts) {
+        set({ completedWorkoutHistory: response.workouts });
+        console.log('✅ Workout progress history loaded:', response.workouts.length, 'workouts');
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch workout progress:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  addCompletedWorkout: async (workoutData) => {
+    try {
+      console.log('💪 Adding completed workout...');
+      set({ isLoading: true });
+      
+      // Format the data for the API
+      const formattedData = {
+        workout_name: workoutData.name || 'Workout',
+        workout_type: workoutData.type || '',
+        date: workoutData.date || new Date().toISOString().split('T')[0],
+        duration: workoutData.duration || 0,
+        calories_burned: workoutData.caloriesBurned || 0,
+        exercises_completed: workoutData.exercisesCompleted || 0,
+        notes: workoutData.notes || '',
+        rating: workoutData.rating || null
+      };
+      
+      // Save to backend
+      const response = await progressAPI.saveCompletedWorkout(formattedData);
+      
+      if (response && response.workout_progress) {
+        // Update local state with the new workout progress history
+        set({ completedWorkoutHistory: response.workout_progress });
+        console.log('✅ Completed workout added successfully');
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('❌ Failed to add completed workout:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 }));

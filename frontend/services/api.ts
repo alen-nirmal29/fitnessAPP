@@ -299,6 +299,25 @@ export const progressAPI = {
   getStats: async () => {
     return apiRequest(PROGRESS_ENDPOINTS.STATS, 'GET');
   },
+
+  // Save completed workout
+  saveCompletedWorkout: async (data: any) => {
+    return apiRequest(PROGRESS_ENDPOINTS.SAVE_WORKOUT, 'POST', data);
+  },
+
+  // Get completed workouts
+  getCompletedWorkouts: async (page: number = 1, pageSize: number = 10) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    });
+    return apiRequest(`${PROGRESS_ENDPOINTS.WORKOUT_PROGRESS_HISTORY}?${params}`, 'GET');
+  },
+
+  // Get all completed workouts (no pagination)
+  getAllCompletedWorkouts: async () => {
+    return apiRequest(PROGRESS_ENDPOINTS.COMPLETED_WORKOUTS, 'GET');
+  },
   
   // Save goal
   saveGoal: async (data: any) => {

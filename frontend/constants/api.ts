@@ -45,6 +45,9 @@ export const PROGRESS_ENDPOINTS = {
   HISTORY: `${API_BASE_URL}/progress/history/`,
   STATS: `${API_BASE_URL}/progress/stats/`,
   SAVE_GOAL: `${API_BASE_URL}/progress/save-goal/`,
+  COMPLETED_WORKOUTS: `${API_BASE_URL}/progress/completed-workouts/`,
+  SAVE_WORKOUT: `${API_BASE_URL}/progress/save-workout/`,
+  WORKOUT_PROGRESS_HISTORY: `${API_BASE_URL}/progress/workout-progress/`,
 };
 
 // AI endpoints
@@ -62,4 +65,4 @@ export const getAuthHeaders = async () => {
     'Content-Type': 'application/json',
     ...(token && { Authorization: `Bearer ${token}` }),
   };
-}; 
+};

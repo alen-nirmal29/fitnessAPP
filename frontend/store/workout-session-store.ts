@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { Exercise } from '@/types/workout';
-import { workoutAPI } from '@/services/api';
-import { progressAPI } from '@/services/api';
+import { workoutAPI, progressAPI } from '@/services/api';
 
 export type WorkoutSessionState = 'idle' | 'active' | 'resting' | 'completed';
 
@@ -195,6 +194,19 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
           // Also mark this workout as completed in the workout store
           workoutStore.completeWorkout(completedSession.id);
           console.log('✅ Marked workout as completed in workout store');
+          
+          // Add the completed workout to the progress history
+          await workoutStore.addCompletedWorkout({
+            name: completedSession.workoutName,
+            type: completedSession.workoutType || '',
+            date: new Date().toISOString().split('T')[0],
+            duration: duration,
+            caloriesBurned: caloriesBurned,
+            exercisesCompleted: completedSession.completedExercises.length,
+            notes: completedSession.notes || '',
+            rating: completedSession.rating || null
+          });
+          console.log('✅ Added workout to progress history');
           
           // Refresh workout stats to ensure UI updates properly
           await get().refreshWorkoutStats();

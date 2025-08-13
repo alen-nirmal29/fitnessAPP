@@ -25,4 +25,10 @@ urlpatterns = [
     path('history/', views.get_user_progress_history, name='progress-history'),
     path('stats/', views.get_user_progress_stats, name='progress-stats'),
     path('save-goal/', views.save_goal, name='save-goal'),
-] 
+    
+    # Completed Workouts
+    path('completed-workouts/', views.CompletedWorkoutListCreateView.as_view(), name='completed-workout-list-create'),
+    path('completed-workouts/<int:pk>/', views.CompletedWorkoutRetrieveUpdateDestroyView.as_view(), name='completed-workout-detail'),
+    path('save-workout/', views.save_completed_workout, name='save-completed-workout'),
+    path('workout-progress/', views.get_workout_progress, name='workout-progress'),
+]

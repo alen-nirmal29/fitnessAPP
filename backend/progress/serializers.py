@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ProgressEntry, WorkoutProgress, Goal, Analytics
+from .models import ProgressEntry, WorkoutProgress, Goal, Analytics, CompletedWorkout
 
 class ProgressEntrySerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,4 +23,10 @@ class AnalyticsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Analytics
         fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at', 'user'] 
+        read_only_fields = ['id', 'created_at', 'updated_at', 'user']
+
+class CompletedWorkoutSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompletedWorkout
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at', 'user']

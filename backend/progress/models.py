@@ -1,6 +1,36 @@
 from django.db import models
 from users.models import User, BodyMeasurements, BodyComposition
 
+class CompletedWorkout(models.Model):
+    """Model for tracking individual completed workouts"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='completed_workouts')
+    
+    # Workout details
+    workout_name = models.CharField(max_length=200)
+    workout_type = models.CharField(max_length=50, blank=True)  # e.g., "strength", "cardio", "hiit"
+    
+    # Timing
+    date = models.DateField()
+    duration = models.PositiveIntegerField()  # in minutes
+    
+    # Performance metrics
+    calories_burned = models.PositiveIntegerField(default=0)
+    exercises_completed = models.PositiveIntegerField(default=0)
+    
+    # Optional details
+    notes = models.TextField(blank=True)
+    rating = models.PositiveSmallIntegerField(null=True, blank=True)  # 1-5 rating
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.workout_name} - {self.date}"
+    
+    class Meta:
+        db_table = 'completed_workouts'
+        ordering = ['-date']
+
 class ProgressEntry(models.Model):
     """Individual progress entry for tracking user progress over time"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='progress_entries')

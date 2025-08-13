@@ -2,8 +2,8 @@ from django.shortcuts import render
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
-from .models import ProgressEntry, WorkoutProgress, Goal, Analytics
-from .serializers import ProgressEntrySerializer, WorkoutProgressSerializer, GoalSerializer, AnalyticsSerializer
+from .models import ProgressEntry, WorkoutProgress, Goal, Analytics, CompletedWorkout
+from .serializers import ProgressEntrySerializer, WorkoutProgressSerializer, GoalSerializer, AnalyticsSerializer, CompletedWorkoutSerializer
 from users.models import User
 from django.db import models
 
@@ -90,6 +90,24 @@ class AnalyticsRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return Analytics.objects.filter(user=self.request.user)
+
+# --- CompletedWorkout CRUD ---
+class CompletedWorkoutListCreateView(generics.ListCreateAPIView):
+    serializer_class = CompletedWorkoutSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return CompletedWorkout.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class CompletedWorkoutRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = CompletedWorkoutSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return CompletedWorkout.objects.filter(user=self.request.user)
 
 # --- Additional API endpoints for better data management ---
 
@@ -268,4 +286,97 @@ def save_goal(request):
         
     except Exception as e:
         logger.error(f"❌ Error saving goal: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def save_completed_workout(request):
+    """Save completed workout data"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        user = request.user
+        data = request.data
+        
+        logger.info(f"💪 Saving completed workout for user {user.email}")
+        logger.info(f"📦 Workout data: {data}")
+        
+        # Create the completed workout
+        completed_workout = CompletedWorkout.objects.create(
+            user=user,
+            workout_name=data.get('workout_name'),
+            workout_type=data.get('workout_type', ''),
+            date=data.get('date'),
+            duration=data.get('duration', 0),
+            calories_burned=data.get('calories_burned', 0),
+            exercises_completed=data.get('exercises_completed', 0),
+            notes=data.get('notes', ''),
+            rating=data.get('rating')
+        )
+        
+        # Get all completed workouts for the user
+        user_workouts = CompletedWorkout.objects.filter(user=user).order_by('-date')
+        
+        logger.info(f"✅ Completed workout saved successfully: {completed_workout.id}")
+        return Response({
+            'message': 'Workout saved successfully',
+            'workout_id': completed_workout.id,
+            'workout_progress': CompletedWorkoutSerializer(user_workouts[:10], many=True).data,
+            'total_workouts': user_workouts.count()
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Error saving completed workout: {str(e)}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_workout_progress(request):
+    """Get user's workout progress history"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        user = request.user
+        workouts = CompletedWorkout.objects.filter(user=user).order_by('-date')
+        
+        # Pagination
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
+        start = (page - 1) * page_size
+        end = start + page_size
+        
+        paginated_workouts = workouts[start:end]
+        
+        # Calculate stats
+        total_workouts = workouts.count()
+        total_duration = sum(workout.duration for workout in workouts if workout.duration)
+        total_calories = sum(workout.calories_burned for workout in workouts if workout.calories_burned)
+        
+        # Get workout types distribution
+        workout_types = {}
+        for workout in workouts:
+            workout_type = workout.workout_type or 'Other'
+            if workout_type in workout_types:
+                workout_types[workout_type] += 1
+            else:
+                workout_types[workout_type] = 1
+        
+        progress_data = {
+            'workouts': CompletedWorkoutSerializer(paginated_workouts, many=True).data,
+            'total_workouts': total_workouts,
+            'total_duration': total_duration,
+            'total_calories': total_calories,
+            'workout_types': workout_types,
+            'page': page,
+            'page_size': page_size,
+            'has_next': end < total_workouts
+        }
+        
+        logger.info(f"📊 Workout progress retrieved for user {user.email}")
+        return Response(progress_data)
+        
+    except Exception as e:
+        logger.error(f"❌ Error getting workout progress: {str(e)}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

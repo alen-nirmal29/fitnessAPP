@@ -589,12 +589,20 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   refreshToken: async () => {
     try {
       console.log('🔄 Attempting to refresh token...');
-      const { refreshToken } = get();
+      let { refreshToken } = get();
+      
+      // If refreshToken is not in state, try to get it from AsyncStorage
+      if (!refreshToken) {
+        console.log('🔍 No refresh token in state, checking AsyncStorage...');
+        refreshToken = await AsyncStorage.getItem('refreshToken');
+      }
       
       if (!refreshToken || refreshToken === 'None' || refreshToken === 'null') {
+        console.error('❌ No valid refresh token available');
         throw new Error('No refresh token available');
       }
 
+      console.log('🔑 Using refresh token (first 20 chars):', refreshToken.substring(0, 20) + '...');
       const response = await authAPI.refreshToken(refreshToken);
       console.log('✅ Token refresh successful');
       

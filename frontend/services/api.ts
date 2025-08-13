@@ -34,11 +34,12 @@ const refreshAccessToken = async () => {
     console.log('🔄 Attempting to refresh access token...');
     const refreshToken = await AsyncStorage.getItem('refreshToken');
     
-    if (!refreshToken) {
-      console.error('❌ No refresh token found');
+    if (!refreshToken || refreshToken === 'None' || refreshToken === 'null') {
+      console.error('❌ No valid refresh token found');
       throw new Error('No refresh token available');
     }
     
+    console.log('🔑 Using refresh token (first 20 chars):', refreshToken.substring(0, 20) + '...');
     const response = await fetch(AUTH_ENDPOINTS.TOKEN_REFRESH, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -53,8 +54,12 @@ const refreshAccessToken = async () => {
     const data = await response.json();
     console.log('✅ Token refresh successful');
     
-    // Store the new access token
+    // Store the new access token and refresh token
     await AsyncStorage.setItem('accessToken', data.access);
+    if (data.refresh) {
+      await AsyncStorage.setItem('refreshToken', data.refresh);
+      console.log('💾 New refresh token stored');
+    }
     console.log('💾 New access token stored');
     
     return data.access;
@@ -210,6 +215,12 @@ export const authAPI = {
     try {
       console.log('🔄 Attempting to refresh token...');
       
+      if (!refreshToken || refreshToken === 'None' || refreshToken === 'null') {
+        console.error('❌ No valid refresh token provided to authAPI.refreshToken');
+        throw new Error('No refresh token available');
+      }
+      
+      console.log('🔑 Using refresh token (first 20 chars):', refreshToken.substring(0, 20) + '...');
       const response = await fetch(AUTH_ENDPOINTS.TOKEN_REFRESH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

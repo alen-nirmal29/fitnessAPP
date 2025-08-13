@@ -28,7 +28,7 @@ export default function WelcomeScreen() {
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId,
-    redirectUri: makeRedirectUri({ useProxy: false, scheme: 'com.rork.fitshape' }),
+    redirectUri: makeRedirectUri({ scheme: 'com.rork.fitshape' }),
   });
 
   useEffect(() => {
@@ -97,27 +97,27 @@ export default function WelcomeScreen() {
           const { loginWithGoogle } = useAuthStore.getState();
           await loginWithGoogle(response.params.id_token);
           
-          console.log('✅ Google authentication successful');
+          // Get the latest user state after login
+          const { user: updatedUser, isAuthenticated } = useAuthStore.getState();
+          console.log('✅ Google authentication successful, user:', updatedUser);
           
-          // Wait a bit to ensure state is updated
-          await new Promise(resolve => setTimeout(resolve, 500));
+          if (!updatedUser) {
+            throw new Error('User data not available after login');
+          }
           
-          // Get the updated user state after login
-          const { user, isAuthenticated } = useAuthStore.getState();
-          console.log('👤 Updated user state:', { user, isAuthenticated });
-          
-          if (user?.hasCompletedOnboarding) {
-            console.log('🏠 User has completed onboarding, redirecting to home tab');
+          // Navigate based on onboarding status
+          if (updatedUser.hasCompletedOnboarding) {
+            console.log('✅ User has completed onboarding, redirecting to main app');
             // Use setTimeout to ensure navigation happens after component is ready
             setTimeout(() => {
-              router.replace('/(tabs)/');
-            }, 1500); // Increased delay
+              router.replace('/(tabs)');
+            }, 1000);
           } else {
             console.log('📝 User has not completed onboarding, redirecting to onboarding');
             // Use setTimeout to ensure navigation happens after component is ready
             setTimeout(() => {
               router.replace('/onboarding/profile');
-            }, 1500); // Increased delay
+            }, 1000);
           }
         } catch (e: any) {
           console.error('Google sign-in error:', e);
@@ -141,7 +141,7 @@ export default function WelcomeScreen() {
     setLoading(true);
     setErrorState(null);
     try {
-      await promptAsync({ useProxy: false });
+      await promptAsync();
     } catch (e) {
       setErrorState('Google signup error');
       setLoading(false);
@@ -214,7 +214,7 @@ export default function WelcomeScreen() {
               onPress={handleGetStarted}
               variant="primary"
               size="large"
-              style={[styles.button, { minHeight: 64 }]}
+              style={{ ...styles.button, minHeight: 64 }}
             />
             <View style={styles.loginRow}>
               <Text style={styles.loginText}>Already have account? </Text>

@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // API Configuration for Django Backend
 // Use your computer's IP address instead of localhost for React Native
-export const API_BASE_URL = 'http://192.168.68.106:8000/api';
+export const API_BASE_URL = 'http://192.168.68.104:8000/api';
 
 // Auth endpoints
 export const AUTH_ENDPOINTS = {
@@ -59,10 +59,37 @@ export const AI_ENDPOINTS = {
 };
 
 // API Headers helper
-export const getAuthHeaders = async () => {
-  const token = await AsyncStorage.getItem('accessToken');
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
+export const getAuthHeaders = async (): Promise<Record<string, string>> => {
+  try {
+    // First try to get token from AsyncStorage
+    let token = await AsyncStorage.getItem('accessToken');
+    
+    // If not found in AsyncStorage, try to get it from the auth store
+    if (!token || token === 'null' || token === 'undefined') {
+      try {
+        const { getState } = require('@/store/auth-store');
+        const authState = getState();
+        token = authState?.accessToken || '';
+      } catch (error) {
+        console.warn('Could not access auth store:', error);
+      }
+    }
+
+    // Log the token status for debugging
+    if (!token) {
+      console.warn('No access token found for API request');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      ...(token && token !== 'null' && token !== 'undefined' && { 
+        Authorization: `Bearer ${token}` 
+      }),
+    };
+  } catch (error) {
+    console.error('Error getting auth headers:', error);
+    return {
+      'Content-Type': 'application/json'
+    };
+  }
 };

@@ -34,6 +34,10 @@ export default function ProgressScreen() {
         // and update the local state with the latest data
         await sessionStore.refreshWorkoutStats();
         
+        // Log the current workout stats after refresh
+        console.log('📊 Current workout stats after refresh:', sessionStore.workoutStats);
+        console.log('📊 Completed workouts count:', sessionStore.completedWorkouts.length);
+        
         // Also refresh the workout store data
         const { useWorkoutStore } = await import('@/store/workout-store');
         const workoutStore = useWorkoutStore.getState();
@@ -68,6 +72,10 @@ export default function ProgressScreen() {
           // This will fetch the latest workout history from the backend
           // and update the local state with the latest data
           await sessionStore.refreshWorkoutStats();
+          
+          // Log the refreshed stats
+          console.log('📊 Progress screen focus - Refreshed workout stats:', sessionStore.workoutStats);
+          console.log('📊 Progress screen focus - Completed workouts count:', sessionStore.completedWorkouts.length);
           
           // Also refresh the workout store data
           const { useWorkoutStore } = await import('@/store/workout-store');
@@ -288,13 +296,13 @@ export default function ProgressScreen() {
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
             <Calendar size={20} color={Colors.dark.accent} />
-            <Text style={styles.statValue}>{workoutStats.weeklyWorkouts}/7</Text>
+            <Text style={styles.statValue}>{workoutStats?.weeklyWorkouts !== undefined ? `${workoutStats.weeklyWorkouts}/7` : '0/7'}</Text>
             <Text style={styles.statLabel}>Workouts</Text>
           </View>
           
           <View style={styles.statItem}>
             <TrendingUp size={20} color={Colors.dark.accent} />
-            <Text style={styles.statValue}>+{workoutStats.strengthIncrease}%</Text>
+            <Text style={styles.statValue}>+{workoutStats?.strengthIncrease !== undefined ? workoutStats.strengthIncrease : 0}%</Text>
             <Text style={styles.statLabel}>Strength</Text>
           </View>
           

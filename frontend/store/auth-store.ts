@@ -179,18 +179,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     console.log('💾 Storing tokens in AsyncStorage...');
     
     // Validate tokens before storing
-    if (!accessToken || accessToken === 'None' || accessToken === 'null') {
+    if (!accessToken || accessToken === 'None' || accessToken === 'null' || typeof accessToken !== 'string') {
       console.error('❌ Invalid access token:', accessToken);
       throw new Error('Invalid access token received');
     }
     
-    if (!refreshToken || refreshToken === 'None' || refreshToken === 'null') {
+    if (!refreshToken || refreshToken === 'None' || refreshToken === 'null' || typeof refreshToken !== 'string') {
       console.error('❌ Invalid refresh token:', refreshToken);
       throw new Error('Invalid refresh token received');
     }
     
-    console.log('🔑 Access token (first 20 chars):', accessToken.substring(0, 20) + '...');
-    console.log('🔄 Refresh token (first 20 chars):', refreshToken.substring(0, 20) + '...');
+    // Safe substring operations after type validation
+    console.log('🔑 Access token (first 20 chars):', accessToken.substring(0, Math.min(20, accessToken.length)) + '...');
+    console.log('🔄 Refresh token (first 20 chars):', refreshToken.substring(0, Math.min(20, refreshToken.length)) + '...');
     
     try {
       await AsyncStorage.setItem('accessToken', accessToken);
@@ -580,8 +581,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         email: state.user.email,
         hasCompletedOnboarding: state.user.hasCompletedOnboarding
       } : null,
-      accessToken: state.accessToken ? `${state.accessToken.substring(0, 20)}...` : 'None',
-      refreshToken: state.refreshToken ? `${state.refreshToken.substring(0, 20)}...` : 'None'
+      accessToken: state.accessToken && typeof state.accessToken === 'string' ? `${state.accessToken.substring(0, 20)}...` : 'None',
+      refreshToken: state.refreshToken && typeof state.refreshToken === 'string' ? `${state.refreshToken.substring(0, 20)}...` : 'None'
     });
     return state;
   },
@@ -597,12 +598,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         refreshToken = await AsyncStorage.getItem('refreshToken');
       }
       
-      if (!refreshToken || refreshToken === 'None' || refreshToken === 'null') {
+      if (!refreshToken || refreshToken === 'None' || refreshToken === 'null' || typeof refreshToken !== 'string') {
         console.error('❌ No valid refresh token available');
         throw new Error('No refresh token available');
       }
 
-      console.log('🔑 Using refresh token (first 20 chars):', refreshToken.substring(0, 20) + '...');
+      console.log('🔑 Using refresh token (first 20 chars):', refreshToken.substring(0, Math.min(20, refreshToken.length)) + '...');
       const response = await authAPI.refreshToken(refreshToken);
       console.log('✅ Token refresh successful');
       

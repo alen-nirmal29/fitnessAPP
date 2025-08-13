@@ -37,7 +37,7 @@ export default function HomeScreen() {
   React.useEffect(() => {
     const loadWorkoutHistory = async () => {
       try {
-        console.log('📊 Loading workout history for home page...');
+        console.log('📊 Loading workout history for home screen...');
         
         // Get the session store and refresh workout stats
         const { useWorkoutSessionStore } = await import('@/store/workout-session-store');
@@ -46,6 +46,12 @@ export default function HomeScreen() {
         // This will fetch the latest workout history from the backend
         // and update the local state with the latest data
         await sessionStore.refreshWorkoutStats();
+        
+        // Log the current workout stats after refresh
+        console.log('📊 Home screen - Current workout stats after refresh:', sessionStore.workoutStats);
+        console.log('📊 Home screen - Completed workouts count:', sessionStore.completedWorkouts.length);
+        console.log('📊 Home screen - Today\'s workouts:', sessionStore.getTodayWorkouts().length);
+        console.log('📊 Home screen - Weekly workouts:', sessionStore.getWeeklyWorkouts().length);
         
         // Also refresh the workout store data
         const { useWorkoutStore } = await import('@/store/workout-store');
@@ -56,7 +62,7 @@ export default function HomeScreen() {
           await workoutStore.loadUserPlans();
         }
         
-        console.log('✅ Workout history loaded for home page');
+        console.log('✅ Workout history loaded for home screen');
       } catch (error) {
         console.error('❌ Failed to load workout history for home:', error);
       }
@@ -79,6 +85,11 @@ export default function HomeScreen() {
           // This will fetch the latest workout history from the backend
           // and update the local state with the latest data
           await sessionStore.refreshWorkoutStats();
+          
+          // Log the refreshed stats
+          console.log('📊 Home screen focus - Refreshed workout stats:', sessionStore.workoutStats);
+          console.log('📊 Home screen focus - Today\'s workouts:', sessionStore.getTodayWorkouts().length);
+          console.log('📊 Home screen focus - Weekly workouts:', sessionStore.getWeeklyWorkouts().length);
           
           // Also refresh the workout store data
           const { useWorkoutStore } = await import('@/store/workout-store');
@@ -158,11 +169,15 @@ export default function HomeScreen() {
   };
 
   const getTodayWorkoutsCount = () => {
-    return getTodayWorkouts().length;
+    const todayWorkouts = getTodayWorkouts();
+    console.log('🏠 Today\'s workouts on home screen:', todayWorkouts.length);
+    return todayWorkouts.length;
   };
 
   const getWeeklyWorkoutsCount = () => {
-    return getWeeklyWorkouts().length;
+    const weeklyWorkouts = getWeeklyWorkouts();
+    console.log('🏠 Weekly workouts on home screen:', weeklyWorkouts.length);
+    return weeklyWorkouts.length;
   };
 
   return (
@@ -187,7 +202,9 @@ export default function HomeScreen() {
             <View style={styles.statContent}>
               <Dumbbell size={24} color={Colors.dark.accent} />
               <View style={styles.statText}>
-                <Text style={styles.statNumber}>{getTodayWorkoutsCount()}</Text>
+                <Text style={styles.statNumber}>
+                  {workoutStats ? getTodayWorkoutsCount() : '...'}
+                </Text>
                 <Text style={styles.statLabel}>Today's Workouts</Text>
               </View>
             </View>
@@ -197,7 +214,9 @@ export default function HomeScreen() {
             <View style={styles.statContent}>
               <Calendar size={24} color={Colors.dark.gradient.primary} />
               <View style={styles.statText}>
-                <Text style={styles.statNumber}>{getWeeklyWorkoutsCount()}</Text>
+                <Text style={styles.statNumber}>
+                  {workoutStats ? getWeeklyWorkoutsCount() : '...'}
+                </Text>
                 <Text style={styles.statLabel}>This Week</Text>
               </View>
             </View>

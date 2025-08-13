@@ -323,25 +323,92 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
   getTodayWorkouts: () => {
     const { completedWorkouts } = get();
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    today.setHours(0, 0, 0, 0); // Start of today
     
-    return completedWorkouts.filter(workout => {
-      const workoutDate = new Date(workout.startTime);
-      return workoutDate >= today && workoutDate < tomorrow;
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
+    
+    console.log('📊 Checking today\'s workouts from', completedWorkouts.length, 'total workouts');
+    
+    const todayWorkouts = completedWorkouts.filter(workout => {
+      // Handle both date string and Date object
+      let workoutDate;
+      try {
+        if (typeof workout.date === 'string') {
+          // If we have a date string (YYYY-MM-DD), use that
+          workoutDate = new Date(workout.date);
+        } else if (workout.startTime) {
+          // Otherwise use startTime
+          workoutDate = new Date(typeof workout.startTime === 'string' ? workout.startTime : workout.startTime);
+        } else {
+          // Fallback
+          return false;
+        }
+        
+        // Set to start of day for comparison
+        workoutDate.setHours(0, 0, 0, 0);
+        
+        // Check if it's today
+        const isToday = workoutDate.getTime() === today.getTime();
+        if (isToday) {
+          console.log('📊 Found today\'s workout:', workout.workoutName, 'on', workoutDate.toISOString().split('T')[0]);
+        }
+        return isToday;
+      } catch (error) {
+        console.error('❌ Error parsing date for workout:', workout, error);
+        return false;
+      }
     });
+    
+    console.log(`📊 Today's workouts count: ${todayWorkouts.length}`);
+    return todayWorkouts;
   },
 
   getWeeklyWorkouts: () => {
     const { completedWorkouts } = get();
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
+    startOfWeek.setHours(0, 0, 0, 0);
     
-    return completedWorkouts.filter(workout => {
-      const workoutDate = new Date(workout.startTime);
-      return workoutDate >= oneWeekAgo;
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 7);
+    
+    console.log('📊 Checking weekly workouts from', completedWorkouts.length, 'total workouts');
+    console.log('📊 Week range:', startOfWeek.toISOString().split('T')[0], 'to', endOfWeek.toISOString().split('T')[0]);
+    
+    const weeklyWorkouts = completedWorkouts.filter(workout => {
+      // Handle both date string and Date object
+      let workoutDate;
+      try {
+        if (typeof workout.date === 'string') {
+          // If we have a date string (YYYY-MM-DD), use that
+          workoutDate = new Date(workout.date);
+        } else if (workout.startTime) {
+          // Otherwise use startTime
+          workoutDate = new Date(typeof workout.startTime === 'string' ? workout.startTime : workout.startTime);
+        } else {
+          // Fallback
+          return false;
+        }
+        
+        // Set to start of day for comparison
+        workoutDate.setHours(0, 0, 0, 0);
+        
+        // Check if it's within this week
+        const isThisWeek = workoutDate >= startOfWeek && workoutDate < endOfWeek;
+        if (isThisWeek) {
+          console.log('📊 Found this week\'s workout:', workout.workoutName, 'on', workoutDate.toISOString().split('T')[0]);
+        }
+        return isThisWeek;
+      } catch (error) {
+        console.error('❌ Error parsing date for workout:', workout, error);
+        return false;
+      }
     });
+    
+    console.log(`📊 Weekly workouts count: ${weeklyWorkouts.length}`);
+    return weeklyWorkouts;
   },
 
   // Additional functions for session screen
@@ -464,9 +531,19 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       console.log('✅ Completed exercises:', session.completedExercises);
       console.log('✅ Calories burned:', caloriesBurned);
 
-      // Create the workout session
-      const savedSession = await workoutAPI.createSession(sessionData);
-      console.log('✅ Workout session created:', savedSession);
+      // Import APIs explicitly to ensure both are available
+      const { workoutAPI, progressAPI } = await import('@/services/api');
+      let savedSession = null;
+
+      // Create the workout session with workoutAPI
+      try {
+        savedSession = await workoutAPI.createSession(sessionData);
+        console.log('✅ Workout session created with workoutAPI:', savedSession);
+      } catch (sessionError) {
+        console.error('❌ Failed to create workout session with workoutAPI:', sessionError);
+        // Create a fallback session object if API call fails
+        savedSession = { id: session.id, ...sessionData };
+      }
 
       // Save exercise sets if there are any
       if (session.exercises.length > 0) {
@@ -475,11 +552,11 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
           exercise_id: exercise?.id || `exercise-${index}`, // Use exercise_id directly as string
           set_number: index + 1,
           reps_completed: exercise?.reps || 0,
-          weight_used: 0, // Default weight
-          duration: 0, // Default duration
+          weight_used: exercise?.weight || 0, // Use exercise weight if available
+          duration: exercise?.duration || 0, // Use exercise duration if available
           rest_time: exercise?.restTime || 60,
           notes: '',
-          difficulty_rating: null
+          difficulty_rating: exercise?.difficultyRating || null
         }));
 
         // Save each exercise set
@@ -494,19 +571,50 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
         }
       }
 
-      // Save progress data
+      // Save progress data to progressAPI
       const progressData = {
         session_id: savedSession.id,
         workout_type: session.workoutName,
+        workout_name: session.workoutName, // Add workout_name for progressAPI
         duration_minutes: sessionData.duration,
-        calories_burned: Math.round(sessionData.duration * 8), // Rough estimate
+        calories_burned: caloriesBurned,
         exercises_completed: session.completedExercises.length,
+        exercises: session.exercises || [], // Include full exercise data
         notes: '',
         date: new Date().toISOString().split('T')[0], // Format as YYYY-MM-DD
+        start_time: session.startTime,
+        end_time: session.endTime || new Date()
       };
 
-      await workoutAPI.saveProgress(progressData);
-      console.log('✅ Workout progress saved:', progressData);
+      // Try to save to both APIs for redundancy
+      let progressSaved = false;
+      try {
+        await progressAPI.saveCompletedWorkout(progressData);
+        console.log('✅ Workout progress saved to progressAPI');
+        progressSaved = true;
+      } catch (progressError) {
+        console.error('❌ Failed to save to progressAPI:', progressError);
+      }
+
+      // Always try workoutAPI as well for redundancy
+      try {
+        await workoutAPI.saveProgress({
+          workout_type: session.workoutName,
+          started_at: session.startTime,
+          completed_at: session.endTime || new Date(),
+          duration_minutes: sessionData.duration,
+          calories_burned: caloriesBurned,
+          exercises_completed: session.completedExercises.length,
+        });
+        console.log('✅ Workout progress saved to workoutAPI');
+      } catch (workoutProgressError) {
+        console.error('❌ Failed to save workout progress to workoutAPI:', workoutProgressError);
+        
+        // If both APIs failed, log a critical error
+        if (!progressSaved) {
+          console.error('❌❌ CRITICAL: Failed to save workout to both APIs');
+        }
+      }
       
       // Update workout progress in workout store
       try {
@@ -523,7 +631,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
           workoutStore.updateWorkoutProgress(workoutStore.currentPlan.id, newProgress);
           
           // Refresh workout stats to ensure UI updates properly
-          get().refreshWorkoutStats();
+          await get().refreshWorkoutStats();
           console.log('✅ Refreshed workout stats after saving to database');
         }
       } catch (error) {
@@ -531,6 +639,7 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       }
       
       console.log('✅ Workout session and all data saved to database successfully');
+      return savedSession;
     } catch (error) {
       console.error('❌ Failed to save workout session:', error);
       throw new Error(`Failed to save workout: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -544,39 +653,124 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       
       // First, try to get the latest workout history from the backend
       try {
-        const { workoutAPI } = await import('@/services/api');
-        const history = await workoutAPI.getHistory();
-        console.log('✅ Latest workout history loaded:', history);
+        // Try to get completed workouts from both APIs and combine them
+        const { progressAPI, workoutAPI } = await import('@/services/api');
+        let allWorkouts = [];
         
-        // Convert backend history to session store format
-        const formattedHistory = history.results?.map((workout: any) => ({
-          id: workout.id?.toString() || `workout-${Date.now()}`,
-          workoutName: workout.workout_type || 'Workout',
-          exercises: [],
-          currentExerciseIndex: 0,
-          currentSet: 1,
-          totalSets: 1,
-          startTime: new Date(workout.started_at || workout.date),
-          endTime: new Date(workout.completed_at || workout.date),
-          completedExercises: [],
-          state: 'completed' as const,
-          timerSeconds: 0,
-          isRestTimer: false,
-          date: workout.date || workout.started_at,
-          duration: workout.duration_minutes || 0,
-          exercisesCompleted: workout.exercises_completed || 0,
-          caloriesBurned: workout.calories_burned || 0
-        })) || [];
+        // First try progress API
+        try {
+          console.log('📊 Fetching completed workouts from progress API...');
+          const completedWorkouts = await progressAPI.getAllCompletedWorkouts();
+          console.log('✅ Completed workouts loaded from progress API:', completedWorkouts.length, 'workouts');
+          
+          // Log the first workout to see its structure
+          if (completedWorkouts.length > 0) {
+            console.log('📊 Sample workout data from progress API:', JSON.stringify(completedWorkouts[0], null, 2));
+          }
+          
+          if (completedWorkouts && Array.isArray(completedWorkouts)) {
+            const formattedWorkouts = completedWorkouts.map((workout: any) => {
+              // Extract date properly
+              let dateStr = workout.date;
+              if (!dateStr && workout.start_time) {
+                dateStr = new Date(workout.start_time).toISOString().split('T')[0];
+              } else if (!dateStr && workout.created_at) {
+                dateStr = new Date(workout.created_at).toISOString().split('T')[0];
+              }
+              
+              return {
+                id: workout.id?.toString() || `workout-${Date.now()}`,
+                workoutName: workout.workout_name || workout.name || 'Workout',
+                exercises: workout.exercises || [],
+                currentExerciseIndex: 0,
+                currentSet: 1,
+                totalSets: 1,
+                startTime: new Date(workout.start_time || workout.created_at || dateStr),
+                endTime: new Date(workout.end_time || workout.updated_at || dateStr),
+                completedExercises: [],
+                state: 'completed' as const,
+                timerSeconds: 0,
+                isRestTimer: false,
+                date: dateStr,
+                duration: workout.duration || 0,
+                exercisesCompleted: workout.exercises_completed || 0,
+                caloriesBurned: workout.calories_burned || 0
+              };
+            });
+            
+            allWorkouts = [...formattedWorkouts];
+            console.log(`📊 Formatted ${formattedWorkouts.length} workouts from progress API`);
+          }
+        } catch (progressError) {
+          console.error('❌ Failed to load from progress API:', progressError);
+        }
         
-        // Update the completed workouts with the latest data
-        set({ completedWorkouts: formattedHistory });
-        console.log('✅ Updated completed workouts with latest data');
+        // Also try workout API to get any additional workouts
+        try {
+          console.log('📊 Fetching workout history from workout API...');
+          const history = await workoutAPI.getHistory();
+          console.log('✅ Latest workout history loaded from workout API:', history.results?.length || 0, 'workouts');
+          
+          // Log the first workout to see its structure
+          if (history.results && history.results.length > 0) {
+            console.log('📊 Sample workout data from workout API:', JSON.stringify(history.results[0], null, 2));
+          }
+          
+          if (history && history.results && Array.isArray(history.results)) {
+            const formattedWorkouts = history.results.map((workout: any) => {
+              // Extract date properly
+              let dateStr = workout.date || workout.started_at;
+              if (!dateStr && workout.start_time) {
+                dateStr = new Date(workout.start_time).toISOString().split('T')[0];
+              } else if (!dateStr && workout.created_at) {
+                dateStr = new Date(workout.created_at).toISOString().split('T')[0];
+              }
+              
+              return {
+                id: workout.id?.toString() || `workout-${Date.now()}`,
+                workoutName: workout.workout_type || workout.workout_name || 'Workout',
+                exercises: workout.exercises || [],
+                currentExerciseIndex: 0,
+                currentSet: 1,
+                totalSets: 1,
+                startTime: new Date(workout.started_at || workout.start_time || dateStr),
+                endTime: new Date(workout.completed_at || workout.end_time || dateStr),
+                completedExercises: [],
+                state: 'completed' as const,
+                timerSeconds: 0,
+                isRestTimer: false,
+                date: dateStr,
+                duration: workout.duration_minutes || workout.duration || 0,
+                exercisesCompleted: workout.exercises_completed || 0,
+                caloriesBurned: workout.calories_burned || 0
+              };
+            });
+            
+            // Merge with existing workouts, avoiding duplicates by ID
+            const existingIds = new Set(allWorkouts.map(w => w.id));
+            const newWorkouts = formattedWorkouts.filter(w => !existingIds.has(w.id));
+            
+            allWorkouts = [...allWorkouts, ...newWorkouts];
+            console.log(`📊 Added ${newWorkouts.length} unique workouts from workout API`);
+          }
+        } catch (workoutApiError) {
+          console.error('❌ Failed to load from workout API:', workoutApiError);
+        }
+        
+        // Update the completed workouts with the combined data
+        if (allWorkouts.length > 0) {
+          set({ completedWorkouts: allWorkouts });
+          console.log('✅ Updated completed workouts with latest data, count:', allWorkouts.length);
+        } else {
+          console.warn('⚠️ No workout history found from APIs');
+        }
       } catch (error) {
         console.error('❌ Failed to load latest workout history:', error);
         // Continue with local data if backend fetch fails
       }
       
       const { completedWorkouts } = get();
+      console.log('📊 Current completed workouts count:', completedWorkouts.length);
       
       const totalWorkouts = completedWorkouts.length;
       const totalExercises = completedWorkouts.reduce((sum, workout) => 
@@ -591,6 +785,10 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
         const workoutDate = new Date(workout.startTime);
         return workoutDate >= oneWeekAgo;
       }).length;
+      
+      // Force recalculation of weekly workouts
+      const todayWorkouts = get().getTodayWorkouts().length;
+      console.log(`📊 Stats calculation: Total=${totalWorkouts}, Weekly=${weeklyWorkouts}, Today=${todayWorkouts}`);
       
       // Calculate strength increase (simple formula: 0.5% per workout)
       const strengthIncrease = Math.min(totalWorkouts * 0.5, 100);

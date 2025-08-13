@@ -34,12 +34,12 @@ const refreshAccessToken = async () => {
     console.log('🔄 Attempting to refresh access token...');
     const refreshToken = await AsyncStorage.getItem('refreshToken');
     
-    if (!refreshToken || refreshToken === 'None' || refreshToken === 'null') {
+    if (!refreshToken || refreshToken === 'None' || refreshToken === 'null' || typeof refreshToken !== 'string') {
       console.error('❌ No valid refresh token found');
       throw new Error('No refresh token available');
     }
     
-    console.log('🔑 Using refresh token (first 20 chars):', refreshToken.substring(0, 20) + '...');
+    console.log('🔑 Using refresh token (first 20 chars):', refreshToken.substring(0, Math.min(20, refreshToken.length)) + '...');
     const response = await fetch(AUTH_ENDPOINTS.TOKEN_REFRESH, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -215,12 +215,12 @@ export const authAPI = {
     try {
       console.log('🔄 Attempting to refresh token...');
       
-      if (!refreshToken || refreshToken === 'None' || refreshToken === 'null') {
+      if (!refreshToken || refreshToken === 'None' || refreshToken === 'null' || typeof refreshToken !== 'string') {
         console.error('❌ No valid refresh token provided to authAPI.refreshToken');
         throw new Error('No refresh token available');
       }
       
-      console.log('🔑 Using refresh token (first 20 chars):', refreshToken.substring(0, 20) + '...');
+      console.log('🔑 Using refresh token (first 20 chars):', refreshToken.substring(0, Math.min(20, refreshToken.length)) + '...');
       const response = await fetch(AUTH_ENDPOINTS.TOKEN_REFRESH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

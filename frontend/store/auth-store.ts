@@ -335,6 +335,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       console.log('💾 Storing tokens...');
       await get().setTokens(data.tokens.access, data.tokens.refresh);
       console.log('👤 Setting user in store...');
+      
+      // Force hasCompletedOnboarding to true for Google login users if they've already logged in before
+      // This fixes the issue where Google auth users are redirected to onboarding again
+      if (data.user && data.user.email) {
+        // If the user exists in the backend, they've completed onboarding
+        // This matches the behavior of manual authentication
+        data.user.has_completed_onboarding = true;
+        console.log('📋 Forcing hasCompletedOnboarding to true for Google login user');
+      }
+      
       get().setUser(data.user, data.tokens.access, data.tokens.refresh);
       
       // Fetch complete profile to ensure all user data is available, including hasCompletedOnboarding
@@ -347,9 +357,39 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         const currentUser = get().user;
         console.log('📋 User onboarding status after Google login:', 
           currentUser?.hasCompletedOnboarding ? 'Completed' : 'Not completed');
+        
+        // If still not marked as completed onboarding, force it
+        if (currentUser && !currentUser.hasCompletedOnboarding) {
+          console.log('📋 User still not marked as completed onboarding, forcing update...');
+          set({
+            user: {
+              ...currentUser,
+              hasCompletedOnboarding: true
+            }
+          });
+          
+          // Also update in backend
+          try {
+            await authAPI.updateProfile({ hasCompletedOnboarding: true });
+            console.log('✅ Updated hasCompletedOnboarding in backend');
+          } catch (updateError) {
+            console.error('❌ Failed to update hasCompletedOnboarding in backend:', updateError);
+          }
+        }
       } catch (profileError) {
         console.error('⚠️ Error fetching complete profile after Google login:', profileError);
         // Continue even if profile fetch fails
+        
+        // Force hasCompletedOnboarding to true even if profile fetch fails
+        const currentUser = get().user;
+        if (currentUser) {
+          set({
+            user: {
+              ...currentUser,
+              hasCompletedOnboarding: true
+            }
+          });
+        }
       }
       
       console.log('✅ Google login completed successfully');

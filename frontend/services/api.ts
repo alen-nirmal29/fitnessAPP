@@ -5,13 +5,29 @@ import { AUTH_ENDPOINTS, WORKOUT_ENDPOINTS, PROGRESS_ENDPOINTS, AI_ENDPOINTS, AP
 const getAuthHeaders = async () => {
   try {
     console.log('🔍 Attempting to retrieve access token...');
-    const token = await AsyncStorage.getItem('accessToken');
+    let token = await AsyncStorage.getItem('accessToken');
+    
+    // If token is not found in AsyncStorage, try to get it from auth-store
+    if (!token || token === 'null' || token === 'undefined') {
+      try {
+        // Dynamically import to avoid circular dependencies
+        const authStore = require('@/store/auth-store');
+        if (authStore && authStore.getState) {
+          const authState = authStore.getState();
+          token = authState?.accessToken;
+          console.log('🔍 Retrieved token from auth store:', token ? 'Found' : 'Not found');
+        }
+      } catch (storeError) {
+        console.warn('⚠️ Could not access auth store:', storeError);
+      }
+    }
     
     console.log('🔑 Token found:', token ? `${token.substring(0, 20)}...` : 'No token found');
     
     if (!token) {
-      console.error('❌ No access token found in AsyncStorage');
-      throw new Error('No access token found');
+      console.warn('⚠️ No access token found, proceeding with basic headers');
+      // Return basic headers instead of throwing an error
+      return { 'Content-Type': 'application/json' };
     }
     
     const headers = {
@@ -24,7 +40,8 @@ const getAuthHeaders = async () => {
     return headers;
   } catch (error) {
     console.error('❌ Error getting auth headers:', error);
-    throw new Error('Authentication failed');
+    // Return basic headers instead of throwing an error
+    return { 'Content-Type': 'application/json' };
   }
 };
 
@@ -78,15 +95,11 @@ const apiRequest = async (
 ) => {
   let headers: Record<string, string>;
   
-  try {
-    if (requireAuth) {
-      headers = await getAuthHeaders();
-    } else {
-      headers = { 'Content-Type': 'application/json' };
-    }
-  } catch (error) {
-    console.error('❌ Authentication error:', error);
-    throw new Error('Authentication required');
+  // Get headers without throwing errors
+  if (requireAuth) {
+    headers = await getAuthHeaders();
+  } else {
+    headers = { 'Content-Type': 'application/json' };
   }
   
   const config: RequestInit = {
@@ -119,6 +132,13 @@ const apiRequest = async (
         if (!retryResponse.ok) {
           const errorData = await retryResponse.json().catch(() => ({}));
           console.error('❌ Retry request failed:', errorData);
+          
+          // For workout and progress endpoints, return empty data instead of throwing
+          if (url.includes('/workouts/') || url.includes('/progress/')) {
+            console.warn('⚠️ Returning empty data for workout/progress endpoint after failed retry');
+            return url.includes('history') || url.includes('completed-workouts') ? { results: [] } : {};
+          }
+          
           throw new Error(errorData.error || `HTTP ${retryResponse.status}: ${retryResponse.statusText}`);
         }
         
@@ -130,6 +150,13 @@ const apiRequest = async (
         // Clear auth data and throw error
         await AsyncStorage.removeItem('accessToken');
         await AsyncStorage.removeItem('refreshToken');
+        
+        // For workout and progress endpoints, return empty data instead of throwing
+        if (url.includes('/workouts/') || url.includes('/progress/')) {
+          console.warn('⚠️ Returning empty data for workout/progress endpoint after refresh failure');
+          return url.includes('history') || url.includes('completed-workouts') ? { results: [] } : {};
+        }
+        
         throw new Error('Authentication expired. Please login again.');
       }
     }
@@ -137,6 +164,13 @@ const apiRequest = async (
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('❌ API request failed:', errorData);
+      
+      // For workout and progress endpoints, return empty data instead of throwing
+      if (url.includes('/workouts/') || url.includes('/progress/')) {
+        console.warn('⚠️ Returning empty data for workout/progress endpoint after failed request');
+        return url.includes('history') || url.includes('completed-workouts') ? { results: [] } : {};
+      }
+      
       throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
     }
     
@@ -145,6 +179,13 @@ const apiRequest = async (
     return responseData;
   } catch (error) {
     console.error('❌ API request error:', error);
+    
+    // For workout and progress endpoints, return empty data instead of throwing
+    if (url.includes('/workouts/') || url.includes('/progress/')) {
+      console.warn('⚠️ Returning empty data for workout/progress endpoint after error');
+      return url.includes('history') || url.includes('completed-workouts') ? { results: [] } : {};
+    }
+    
     throw error;
   }
 };

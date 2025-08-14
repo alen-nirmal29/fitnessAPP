@@ -466,14 +466,18 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       
       // Update workout stats to track total exercises completed
       const workoutStats = get().workoutStats;
+      const updatedStats = {
+        ...workoutStats,
+        totalExercises: workoutStats.totalExercises + 1,
+        strengthIncrease: Math.min(workoutStats.strengthIncrease + 0.5, 100) // Increment strength by 0.5% per exercise, max 100%
+      };
+      
       set({
         currentSession: updatedSession,
-        workoutStats: {
-          ...workoutStats,
-          totalExercises: workoutStats.totalExercises + 1,
-          strengthIncrease: Math.min(workoutStats.strengthIncrease + 0.5, 100) // Increment strength by 0.5% per exercise, max 100%
-        }
+        workoutStats: updatedStats
       });
+       
+      console.log('✅ Workout stats updated successfully:', updatedStats);
       
       console.log('✅ Exercise completed, moving to next exercise:', updatedSession);
       console.log('✅ Updated completed exercises:', updatedCompletedExercises);
@@ -661,14 +665,16 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
         try {
           console.log('📊 Fetching completed workouts from progress API...');
           const completedWorkouts = await progressAPI.getAllCompletedWorkouts();
-          console.log('✅ Completed workouts loaded from progress API:', completedWorkouts.length, 'workouts');
           
-          // Log the first workout to see its structure
-          if (completedWorkouts.length > 0) {
-            console.log('📊 Sample workout data from progress API:', JSON.stringify(completedWorkouts[0], null, 2));
-          }
-          
+          // Check if completedWorkouts is valid
           if (completedWorkouts && Array.isArray(completedWorkouts)) {
+            console.log('✅ Completed workouts loaded from progress API:', completedWorkouts.length, 'workouts');
+            
+            // Log the first workout to see its structure
+            if (completedWorkouts.length > 0) {
+              console.log('📊 Sample workout data from progress API:', JSON.stringify(completedWorkouts[0], null, 2));
+            }
+            
             const formattedWorkouts = completedWorkouts.map((workout: any) => {
               // Extract date properly
               let dateStr = workout.date;
@@ -676,6 +682,9 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
                 dateStr = new Date(workout.start_time).toISOString().split('T')[0];
               } else if (!dateStr && workout.created_at) {
                 dateStr = new Date(workout.created_at).toISOString().split('T')[0];
+              } else {
+                // Default to today if no date is available
+                dateStr = new Date().toISOString().split('T')[0];
               }
               
               return {
@@ -709,14 +718,16 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
         try {
           console.log('📊 Fetching workout history from workout API...');
           const history = await workoutAPI.getHistory();
-          console.log('✅ Latest workout history loaded from workout API:', history.results?.length || 0, 'workouts');
           
-          // Log the first workout to see its structure
-          if (history.results && history.results.length > 0) {
-            console.log('📊 Sample workout data from workout API:', JSON.stringify(history.results[0], null, 2));
-          }
-          
+          // Check if history and history.results are valid
           if (history && history.results && Array.isArray(history.results)) {
+            console.log('✅ Latest workout history loaded from workout API:', history.results.length, 'workouts');
+            
+            // Log the first workout to see its structure
+            if (history.results.length > 0) {
+              console.log('📊 Sample workout data from workout API:', JSON.stringify(history.results[0], null, 2));
+            }
+            
             const formattedWorkouts = history.results.map((workout: any) => {
               // Extract date properly
               let dateStr = workout.date || workout.started_at;
@@ -724,6 +735,9 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
                 dateStr = new Date(workout.start_time).toISOString().split('T')[0];
               } else if (!dateStr && workout.created_at) {
                 dateStr = new Date(workout.created_at).toISOString().split('T')[0];
+              } else {
+                // Default to today if no date is available
+                dateStr = new Date().toISOString().split('T')[0];
               }
               
               return {
@@ -793,15 +807,22 @@ export const useWorkoutSessionStore = create<WorkoutSessionStore>((set, get) => 
       // Calculate strength increase (simple formula: 0.5% per workout)
       const strengthIncrease = Math.min(totalWorkouts * 0.5, 100);
       
+      // Ensure we have at least some data to display even if no workouts are found
+      // This prevents empty stats on the home page
+      const currentStats = get().workoutStats;
+      const updatedStats = {
+        totalWorkouts: totalWorkouts || currentStats?.totalWorkouts || 0,
+        weeklyWorkouts: weeklyWorkouts || currentStats?.weeklyWorkouts || 0,
+        totalExercises: totalExercises || currentStats?.totalExercises || 0,
+        strengthIncrease: strengthIncrease || currentStats?.strengthIncrease || 0,
+        caloriesBurned: totalCalories || currentStats?.caloriesBurned || 0
+      };
+      
       set({
-        workoutStats: {
-          totalWorkouts,
-          weeklyWorkouts,
-          totalExercises,
-          strengthIncrease,
-          caloriesBurned: totalCalories
-        }
+        workoutStats: updatedStats
       });
+      
+      console.log('✅ Workout stats updated successfully:', updatedStats);
       
       console.log('✅ Refreshed workout stats:', {
         totalWorkouts,

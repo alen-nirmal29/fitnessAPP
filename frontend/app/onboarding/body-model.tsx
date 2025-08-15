@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
-import Body3DModel from '@/components/Body3DModel';
+import BodyScaler from '@/components/BodyScaler';
 import { useAuthStore } from '@/store/auth-store';
 import { BodyMeasurements } from '@/types/user';
 import BackButton from '@/components/BackButton';
@@ -111,7 +111,7 @@ export default function BodyModelScreen() {
         </Animated.View>
 
         <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }] }}>
-          <Body3DModel 
+          <BodyScaler 
             gender={user?.gender === 'female' ? 'female' : 'male'} 
             measurements={{
               chest: Number(measurements.chest) || 50,

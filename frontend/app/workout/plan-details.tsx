@@ -5,7 +5,7 @@ import { Calendar, Clock, ArrowRight, CheckCircle } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
-import Body3DModel from '@/components/Body3DModel';
+import BodyScaler from '@/components/BodyScaler';
 import { useWorkoutStore } from '@/store/workout-store';
 import { useAuthStore } from '@/store/auth-store';
 import BackButton from '@/components/BackButton';
@@ -210,7 +210,7 @@ export default function PlanDetailsScreen() {
             <View style={styles.verticalModels}>
               <Text style={styles.modelLabel}>Current</Text>
               <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], width: '100%', height: 350, marginVertical: 12, alignSelf: 'center' }}>
-                <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} measurements={user?.currentMeasurements} readOnly={true} />
+                <BodyScaler gender={user?.gender === 'female' ? 'female' : 'male'} measurements={user?.currentMeasurements} readOnly={true} />
               </Animated.View>
               <Text style={styles.modelLabel}>Goal</Text>
             </View>

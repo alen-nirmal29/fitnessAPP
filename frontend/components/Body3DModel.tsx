@@ -1,9 +1,7 @@
-import React, { Suspense, useRef, useLayoutEffect, useState } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import React from 'react';
+import { StyleSheet } from 'react-native';
 import Colors from '@/constants/colors';
-
-// Temporarily disable 3D rendering to prevent View property errors
-const USE_3D_RENDERING = false;
+import BodyScaler from './BodyScaler';
 
 interface Measurements {
   neck?: number;
@@ -23,55 +21,32 @@ interface Body3DModelProps {
   gender?: 'male' | 'female';
   measurements?: Measurements;
   style?: any;
+  readOnly?: boolean;
+  interactive?: boolean;
+  onMeasurementsChange?: (measurements: Record<string, number>) => void;
 }
 
+// This component now uses the 2D BodyScaler instead of 3D model
 export default function Body3DModel({
   gender = 'male',
   measurements,
   style = {},
+  readOnly = false,
+  interactive = true,
+  onMeasurementsChange
 }: Body3DModelProps) {
-  const [hasError, setHasError] = useState(false);
-
-  // Return a simple placeholder instead of 3D model to prevent View property errors
-  if (!USE_3D_RENDERING || hasError) {
-    return (
-      <View style={[styles.container, style, styles.fallback]}>
-        <Text style={styles.fallbackText}>3D Body Model</Text>
-        <Text style={styles.fallbackSubtext}>Coming Soon</Text>
-      </View>
-    );
-  }
-
-  // This section is temporarily disabled
   return (
-    <View style={[styles.container, style, styles.fallback]}>
-      <Text style={styles.fallbackText}>3D Body Model</Text>
-      <Text style={styles.fallbackSubtext}>Coming Soon</Text>
-    </View>
+    <BodyScaler 
+      gender={gender}
+      measurements={measurements}
+      style={style}
+      readOnly={readOnly}
+      interactive={interactive}
+      onMeasurementsChange={onMeasurementsChange}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    height: 350,
-    backgroundColor: '#181C22',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  fallback: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fallbackText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  fallbackSubtext: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    opacity: 0.7,
-  },
+  // Styles are now handled by the BodyScaler component
 });

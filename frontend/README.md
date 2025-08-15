@@ -1,32 +1,32 @@
 # FitTransform Frontend
 
-A React Native fitness app with 3D body modeling capabilities.
+A React Native fitness app with 2D body modeling capabilities using Rive animations.
 
-## 3D Models
+## 2D Models
 
-The app uses .fbx format 3D models for body visualization:
+The app uses .riv format 2D models for body visualization:
 
-- **Male Model**: `male_human_model.fbx` from [alen-nirmal29/male_model](https://github.com/alen-nirmal29/male_model.git)
-- **Female Model**: `female_human_model.fbx` from [alen-nirmal29/female_model](https://github.com/alen-nirmal29/female_model.git)
+- **Male Model**: `male_human_rigged.riv` 
+- **Female Model**: `female_human_rigged.riv`
 
 ## Features
 
-- **3D Body Modeling**: Interactive 3D body models with measurement scaling
+- **2D Body Modeling**: Interactive 2D body models with measurement scaling
 - **Cross-Platform**: Works on iOS, Android, and Web
 - **Real-time Updates**: Live measurement adjustments with visual feedback
 - **Gender-Specific Models**: Separate models for male and female users
 
 ## Model Integration
 
-The 3D models are loaded directly from GitHub repositories and support:
+The 2D models are loaded from the assets directory and support:
 - Real-time measurement scaling
-- Interactive rotation and zoom
+- Interactive bone manipulation
 - Platform-specific optimizations
 - Responsive design across devices
 
 ## Technical Details
 
-- **Format**: .fbx (Autodesk FBX)
-- **Loading**: Uses `useFBX` from @react-three/drei
-- **Rendering**: Three.js with React Three Fiber
+- **Format**: .riv (Rive Animation)
+- **Loading**: Uses `rive-react-native`
+- **Rendering**: Rive Runtime for React Native
 - **Platform**: React Native with Expo

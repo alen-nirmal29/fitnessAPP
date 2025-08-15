@@ -111,15 +111,20 @@ export default function BodyModelScreen() {
         </Animated.View>
 
         <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }] }}>
-          <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} measurements={{
-            chest: Number(measurements.chest) || 50,
-            neck: Number(measurements.neck) || 40,
-            waist: Number(measurements.waist) || 50,
-            leftarm: Number(measurements.leftarm) || 30,
-            rightarm: Number(measurements.rightarm) || 30,
-            leftthigh: Number(measurements.leftthigh) || 40,
-            rightthigh: Number(measurements.rightthigh) || 40,
-          }} />
+          <Body3DModel 
+            gender={user?.gender === 'female' ? 'female' : 'male'} 
+            measurements={{
+              chest: Number(measurements.chest) || 50,
+              neck: Number(measurements.neck) || 40,
+              waist: Number(measurements.waist) || 50,
+              leftarm: Number(measurements.leftarm) || 30,
+              rightarm: Number(measurements.rightarm) || 30,
+              leftthigh: Number(measurements.leftthigh) || 40,
+              rightthigh: Number(measurements.rightthigh) || 40,
+            }}
+            interactive={true}
+            onMeasurementsChange={handleMeasurementsChange}
+          />
         </Animated.View>
         <View style={{ marginTop: 24 }}>
           <Input label="Chest (cm)" value={measurements.chest} onChangeText={v => handleInputChange('chest', v)} keyboardType="numeric" error={errors.chest} leftIcon={<Ruler size={20} color={Colors.dark.subtext} />} />

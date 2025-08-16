@@ -4,8 +4,9 @@ import Slider from '@react-native-community/slider';
 import { Picker } from '@react-native-picker/picker';
 import Rive, { RiveRef } from 'rive-react-native';
 import Colors from '@/constants/colors';
+import { Asset } from 'expo-asset';
 
-// Use require for .riv files instead of imports
+// Use Expo's asset system for loading .riv files
 
 interface BodyScalerProps {
   gender?: 'male' | 'female';
@@ -27,6 +28,34 @@ export default function BodyScaler({
   const riveRef = useRef<RiveRef>(null);
   const [selectedBone, setSelectedBone] = useState('head');
   const [scale, setScale] = useState(1.0);
+  const [maleModelUri, setMaleModelUri] = useState<string | null>(null);
+  const [femaleModelUri, setFemaleModelUri] = useState<string | null>(null);
+  const [assetsLoaded, setAssetsLoaded] = useState(false);
+  
+  // Load Rive assets using Expo's asset system
+  useEffect(() => {
+    async function loadRiveAssets() {
+      try {
+        // Load the Rive files as Expo assets
+        const maleAsset = Asset.fromModule(require('../assets/male_human_rigged.riv'));
+        const femaleAsset = Asset.fromModule(require('../assets/female_human_rigged.riv'));
+        
+        // Download the assets to get their localUri
+        await Promise.all([
+          maleAsset.downloadAsync(),
+          femaleAsset.downloadAsync()
+        ]);
+        
+        setMaleModelUri(maleAsset.localUri);
+        setFemaleModelUri(femaleAsset.localUri);
+        setAssetsLoaded(true);
+      } catch (error) {
+        console.error('Failed to load Rive assets:', error);
+      }
+    }
+    
+    loadRiveAssets();
+  }, []);
 
   // Bone names must match exactly as in your Rive file
   const bones = [
@@ -77,13 +106,20 @@ export default function BodyScaler({
 
   // If in readOnly mode, just show the model with preset measurements
   if (readOnly) {
+    // Don't render until assets are loaded
+    if (!assetsLoaded) {
+      return (
+        <View style={[styles.container, style]}>
+          <Text style={styles.loadingText}>Loading model...</Text>
+        </View>
+      );
+    }
+    
     return (
       <View style={[styles.container, style]}>
         <Rive
           ref={riveRef}
-          resourceName={gender === 'male' 
-            ? require('../assets/male_human_rigged.riv')
-            : require('../assets/female_human_rigged.riv')}
+          resourceName={gender === 'male' ? maleModelUri : femaleModelUri}
           artboardName="Android Expanded - 1"
           style={styles.rive}
           autoplay
@@ -93,13 +129,20 @@ export default function BodyScaler({
     );
   }
 
+  // Don't render until assets are loaded
+  if (!assetsLoaded) {
+    return (
+      <View style={[styles.container, style]}>
+        <Text style={styles.loadingText}>Loading model...</Text>
+      </View>
+    );
+  }
+  
   return (
     <View style={[styles.container, style]}>
       <Rive
         ref={riveRef}
-        resourceName={gender === 'male' 
-          ? require('../assets/male_human_rigged.riv')
-          : require('../assets/female_human_rigged.riv')}
+        resourceName={gender === 'male' ? maleModelUri : femaleModelUri}
         artboardName="Android Expanded - 1"
         style={styles.rive}
         autoplay
@@ -177,6 +220,11 @@ const styles = StyleSheet.create({
     color: Colors.dark.text,
     fontSize: 14,
     marginTop: 10,
+    textAlign: 'center',
+  },
+  loadingText: {
+    color: Colors.dark.text,
+    fontSize: 16,
     textAlign: 'center',
   }
 });

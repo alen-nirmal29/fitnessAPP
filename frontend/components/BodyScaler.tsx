@@ -4,9 +4,9 @@ import Slider from '@react-native-community/slider';
 import { Picker } from '@react-native-picker/picker';
 import Rive from 'rive-react-native';
 
-// Import .riv files from assets
-import maleModel from '../assets/male_human_rigged.riv';
-import femaleModel from '../assets/female_human_rigged.riv';
+// Remove these imports
+// import maleModel from '../assets/male_human_rigged.riv';
+// import femaleModel from '../assets/female_human_rigged.riv';
 import Colors from '@/constants/colors';
 
 interface BodyScalerProps {
@@ -83,8 +83,10 @@ export default function BodyScaler({
       <View style={[styles.container, style]}>
         <Rive
           ref={riveRef}
-          resource={gender === 'male' ? maleModel : femaleModel}
-          artboardName="Artboard"
+          resource={gender === 'male' 
+            ? require('../assets/male_human_rigged.riv') 
+            : require('../assets/female_human_rigged.riv')}
+          artboardName="Android Expanded - 1"
           style={styles.rive}
           autoplay
         />
@@ -97,7 +99,9 @@ export default function BodyScaler({
     <View style={[styles.container, style]}>
       <Rive
         ref={riveRef}
-        resource={gender === 'male' ? maleModel : femaleModel}
+        resource={gender === 'male' 
+          ? require('../assets/male_human_rigged.riv') 
+          : require('../assets/female_human_rigged.riv')}
         artboardName="Artboard"
         style={styles.rive}
         autoplay

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Animated, 
 import { router, useFocusEffect } from 'expo-router';
 import { Dumbbell, Award, TrendingUp, Calendar, Clock, Target, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import Body3DModel from '@/components/Body3DModel';
+// Removed Body3DModel import
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
@@ -193,7 +193,7 @@ export default function HomeScreen() {
 
         {/* 3D Body Model */}
         <View style={styles.modelContainer}>
-          <Body3DModel />
+          {/* Body3DModel component removed */}
         </View>
 
         {/* Quick Stats */}

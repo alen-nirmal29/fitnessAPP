@@ -6,7 +6,7 @@ import { SpecificGoal } from '@/types/user';
 import Colors from '@/constants/colors';
 import Card from '@/components/Card';
 import ProgressBar from '@/components/ProgressBar';
-import Body3DModel from '@/components/Body3DModel';
+// Removed Body3DModel import
 import { useAuthStore } from '@/store/auth-store';
 import { useWorkoutSessionStore } from '@/store/workout-session-store';
 import { useWorkoutStore } from '@/store/workout-store';
@@ -336,7 +336,7 @@ export default function ProgressScreen() {
         <View style={styles.verticalModels}>
           <Text style={styles.modelLabel}>Current</Text>
           <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], width: '100%', height: 350, marginVertical: 12, alignSelf: 'center' }}>
-            <Body3DModel gender={user?.gender === 'female' ? 'female' : 'male'} measurements={user?.currentMeasurements} readOnly={true} />
+            {/* Body3DModel component removed */}
           </Animated.View>
           <Text style={styles.modelLabel}>After</Text>
           {/* Intentionally left empty for future model implementation */}

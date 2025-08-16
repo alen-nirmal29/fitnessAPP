@@ -83,7 +83,7 @@ export default function BodyScaler({
       <View style={[styles.container, style]}>
         <Rive
           ref={riveRef}
-          resourceName={gender === 'male' ? maleModel : femaleModel}
+          resourceName={gender === 'male' ? (maleModel as any) : (femaleModel as any)}
           artboardName="Android Expanded - 1"
           style={styles.rive}
           autoplay
@@ -97,7 +97,7 @@ export default function BodyScaler({
     <View style={[styles.container, style]}>
       <Rive
         ref={riveRef}
-        resourceName={gender === 'male' ? maleModel : femaleModel}
+        resourceName={gender === 'male' ? (maleModel as any) : (femaleModel as any)}
         artboardName="Android Expanded - 1"
         style={styles.rive}
         autoplay

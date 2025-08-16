@@ -83,9 +83,7 @@ export default function BodyScaler({
       <View style={[styles.container, style]}>
         <Rive
           ref={riveRef}
-          resourceName={gender === 'male' 
-            ? require('../assets/male_human_rigged.riv') 
-            : require('../assets/female_human_rigged.riv')}
+          resourceName={gender === 'male' ? 'male_human_rigged.riv' : 'female_human_rigged.riv'}
           artboardName="Android Expanded - 1"
           style={styles.rive}
           autoplay
@@ -99,11 +97,8 @@ export default function BodyScaler({
     <View style={[styles.container, style]}>
       <Rive
         ref={riveRef}
-        resourceName={gender === 'male' 
-          ? require('../assets/male_human_rigged.riv') 
-          : require('../assets/female_human_rigged.riv')}
+        resourceName={gender === 'male' ? 'male_human_rigged.riv' : 'female_human_rigged.riv'}
         artboardName="Android Expanded - 1"
-
         style={styles.rive}
         autoplay
       />

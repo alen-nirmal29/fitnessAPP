@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Picker } from '@react-native-picker/picker';
-import Rive from 'rive-react-native';
+import Rive, { RiveRef } from 'rive-react-native';
 
 // Remove these imports
 // import maleModel from '../assets/male_human_rigged.riv';
@@ -26,7 +26,7 @@ export default function BodyScaler({
   interactive = true,
   onMeasurementsChange
 }: BodyScalerProps) {
-  const riveRef = useRef(null);
+  const riveRef = useRef<RiveRef>(null);
   const [selectedBone, setSelectedBone] = useState('head');
   const [scale, setScale] = useState(1.0);
 
@@ -46,7 +46,7 @@ export default function BodyScaler({
     if (riveRef.current) {
       riveRef.current.setNodeScale(selectedBone, scale, scale);
     }
-  }, [selectedBone]);
+  }, [selectedBone,scale]);
 
   // Handle slider change
   const handleScaleChange = (value) => {
@@ -83,7 +83,7 @@ export default function BodyScaler({
       <View style={[styles.container, style]}>
         <Rive
           ref={riveRef}
-          resource={gender === 'male' 
+          resourceName={gender === 'male' 
             ? require('../assets/male_human_rigged.riv') 
             : require('../assets/female_human_rigged.riv')}
           artboardName="Android Expanded - 1"
@@ -99,10 +99,11 @@ export default function BodyScaler({
     <View style={[styles.container, style]}>
       <Rive
         ref={riveRef}
-        resource={gender === 'male' 
+        resourceName={gender === 'male' 
           ? require('../assets/male_human_rigged.riv') 
           : require('../assets/female_human_rigged.riv')}
-        artboardName="Artboard"
+        artboardName="Android Expanded - 1"
+
         style={styles.rive}
         autoplay
       />

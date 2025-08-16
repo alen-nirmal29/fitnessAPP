@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // API Configuration for Django Backend
 // Use your computer's IP address instead of localhost for React Native
-export const API_BASE_URL = 'http://192.168.68.104:8000/api';
+export const API_BASE_URL = 'http://192.168.68.101:8000/api';
 
 // Auth endpoints
 export const AUTH_ENDPOINTS = {

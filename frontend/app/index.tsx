@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, TouchableOpacity, Image as RNImage } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -25,6 +25,8 @@ export default function WelcomeScreen() {
   const [error, setErrorState] = useState<string | null>(null);
   const [hasNavigated, setHasNavigated] = useState(false);
   const pathname = usePathname();
+  // Add navigationAttempted ref to prevent multiple navigation attempts
+  const navigationAttempted = useRef(false);
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId,
@@ -60,8 +62,9 @@ export default function WelcomeScreen() {
     initAuth();
   }, [isInitialized]);
 
+  // Consolidated navigation effect with useRef to prevent multiple redirects
   useEffect(() => {
-    if (pathname === '/' && isReady && isAuthenticated && user && !hasNavigated) {
+    if (pathname === '/' && isReady && isAuthenticated && user && !hasNavigated && !navigationAttempted.current) {
       console.log('User authenticated on main screen:', user);
       console.log('hasCompletedOnboarding:', user.hasCompletedOnboarding);
       
@@ -69,24 +72,22 @@ export default function WelcomeScreen() {
       const authState = useAuthStore.getState().checkAuthState();
       console.log('Current auth state on main screen:', authState);
       
+      // Mark navigation as attempted to prevent multiple redirects
+      navigationAttempted.current = true;
       setHasNavigated(true);
       
-      // Add longer delay to ensure navigation happens after component is fully ready
-      setTimeout(() => {
-        if (user.hasCompletedOnboarding) {
-          console.log('User has completed onboarding, redirecting to main app');
-          router.replace('/(tabs)');
-        } else {
-          console.log('User has not completed onboarding, redirecting to onboarding');
-          router.replace('/onboarding/profile');
-        }
-      }, 1500); // Increased delay
+      // Determine destination based on onboarding status
+      const destination = user.hasCompletedOnboarding ? '/(tabs)' : '/onboarding/profile';
+      console.log(`Navigating to: ${destination}`);
+      
+      // Use router.replace directly without setTimeout to prevent rebundling issues
+      router.replace(destination);
     }
   }, [isReady, isAuthenticated, user, pathname, isInOnboarding, hasNavigated]);
 
   // ✅ UPDATED GOOGLE LOGIN RESPONSE HANDLER
   useEffect(() => {
-    if (response?.type === 'success' && response.params.id_token) {
+    if (response?.type === 'success' && response.params.id_token && !navigationAttempted.current) {
       (async () => {
         setLoading(true);
         setErrorState(null);
@@ -105,23 +106,22 @@ export default function WelcomeScreen() {
             throw new Error('User data not available after login');
           }
           
-          // Navigate based on onboarding status
-          if (updatedUser.hasCompletedOnboarding) {
-            console.log('✅ User has completed onboarding, redirecting to main app');
-            // Use setTimeout to ensure navigation happens after component is ready
-            setTimeout(() => {
-              router.replace('/(tabs)');
-            }, 1000);
-          } else {
-            console.log('📝 User has not completed onboarding, redirecting to onboarding');
-            // Use setTimeout to ensure navigation happens after component is ready
-            setTimeout(() => {
-              router.replace('/onboarding/profile');
-            }, 1000);
-          }
+          // Mark navigation as attempted to prevent multiple redirects
+          navigationAttempted.current = true;
+          setHasNavigated(true);
+          
+          // Determine destination based on onboarding status
+          const destination = updatedUser.hasCompletedOnboarding ? '/(tabs)' : '/onboarding/profile';
+          console.log(`Navigating to: ${destination}`);
+          
+          // Navigate based on onboarding status - use router.replace without setTimeout
+          // to prevent rebundling issues
+          router.replace(destination);
         } catch (e: any) {
           console.error('Google sign-in error:', e);
           setErrorState(e.message || 'Google sign-in failed');
+          // Reset navigation attempt flag on error
+          navigationAttempted.current = false;
         } finally {
           setLoading(false);
         }
@@ -256,4 +256,4 @@ const styles = StyleSheet.create({
   loginRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 12 },
   loginText: { color: '#fff', fontSize: 16 },
   loginLink: { color: '#1976D2', fontSize: 16, fontWeight: '500' },
-}); 
+});

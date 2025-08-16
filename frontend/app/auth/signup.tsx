@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -41,15 +41,21 @@ export default function SignupScreen() {
     }
   }, [response]);
 
+  // Track if we've already navigated to prevent multiple navigation attempts
+  const [hasNavigated, setHasNavigated] = useState(false);
+  
   useEffect(() => {
     // Navigate to onboarding if user is authenticated and hasn't completed onboarding
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && !hasNavigated) {
       console.log('User authenticated after signup:', user);
       console.log('hasCompletedOnboarding:', user.hasCompletedOnboarding);
       
       // Check authentication state
       const authState = useAuthStore.getState().checkAuthState();
       console.log('Current auth state after signup:', authState);
+      
+      // Set flag to prevent multiple navigation attempts
+      setHasNavigated(true);
       
       if (!user.hasCompletedOnboarding) {
         console.log('User has not completed onboarding, redirecting to onboarding');
@@ -59,7 +65,7 @@ export default function SignupScreen() {
         router.replace('/(tabs)');
       }
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, hasNavigated]);
 
   const handleGoogleSignup = async (idToken: string) => {
     try {

@@ -5,17 +5,26 @@ import { AuthState, UserProfile } from '@/types/user';
 import { authAPI } from '@/services/api';
 
 // Helper function to transform backend user data to frontend format
-const transformUserFromApi = (u: any): UserProfile => ({
-  id: (u.id ?? u.user_id ?? '').toString(),
-  email: u.email,
-  name: u.first_name || u.name || '',
-  height: u.height,
-  weight: u.weight,
-  gender: u.gender,
-  fitnessGoal: u.fitness_goal ?? u.fitnessGoal,
-  specificGoal: u.specific_goal ?? u.specificGoal,
-  hasCompletedOnboarding: !!(u.has_completed_onboarding ?? u.hasCompletedOnboarding),
-});
+const transformUserFromApi = (u: any): UserProfile => {
+  // Preserve the exact hasCompletedOnboarding value if it's explicitly set
+  // This is important for Google login where we explicitly set this value
+  const hasCompletedOnboarding = 
+    u.has_completed_onboarding !== undefined ? u.has_completed_onboarding : 
+    u.hasCompletedOnboarding !== undefined ? u.hasCompletedOnboarding : 
+    false;
+    
+  return {
+    id: (u.id ?? u.user_id ?? '').toString(),
+    email: u.email,
+    name: u.first_name || u.name || '',
+    height: u.height,
+    weight: u.weight,
+    gender: u.gender,
+    fitnessGoal: u.fitness_goal ?? u.fitnessGoal,
+    specificGoal: u.specific_goal ?? u.specificGoal,
+    hasCompletedOnboarding: hasCompletedOnboarding,
+  };
+};
 
 interface AuthStore extends AuthState {
   isInitialized: boolean;
@@ -324,6 +333,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const data = await authAPI.googleLogin({ id_token: idToken });
       console.log('✅ Google login successful:', data);
       console.log('👤 User data received:', data.user);
+      console.log('🆕 Is new user:', data.is_new_user);
 
       // Validate response structure
       if (!data.tokens || !data.tokens.access || !data.tokens.refresh) {
@@ -336,13 +346,16 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       await get().setTokens(data.tokens.access, data.tokens.refresh);
       console.log('👤 Setting user in store...');
       
-      // Force hasCompletedOnboarding to true for Google login users if they've already logged in before
-      // This fixes the issue where Google auth users are redirected to onboarding again
-      if (data.user && data.user.email) {
-        // If the user exists in the backend, they've completed onboarding
-        // This matches the behavior of manual authentication
+      // Only force hasCompletedOnboarding to true for returning Google users
+      // New users should go through the onboarding process
+      if (data.user && data.user.email && data.is_new_user === false) {
+        // If the user exists in the backend and is not a new user, they've completed onboarding
         data.user.has_completed_onboarding = true;
-        console.log('📋 Forcing hasCompletedOnboarding to true for Google login user');
+        console.log('📋 Forcing hasCompletedOnboarding to true for returning Google user');
+      } else if (data.is_new_user === true) {
+        // Ensure new users have hasCompletedOnboarding set to false
+        data.user.has_completed_onboarding = false;
+        console.log('📋 Setting hasCompletedOnboarding to false for new Google user');
       }
       
       get().setUser(data.user, data.tokens.access, data.tokens.refresh);
@@ -358,9 +371,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         console.log('📋 User onboarding status after Google login:', 
           currentUser?.hasCompletedOnboarding ? 'Completed' : 'Not completed');
         
-        // If still not marked as completed onboarding, force it
-        if (currentUser && !currentUser.hasCompletedOnboarding) {
-          console.log('📋 User still not marked as completed onboarding, forcing update...');
+        // Only for returning users: If still not marked as completed onboarding, force it
+        if (data.is_new_user === false && currentUser && !currentUser.hasCompletedOnboarding) {
+          console.log('📋 Returning user still not marked as completed onboarding, forcing update...');
           set({
             user: {
               ...currentUser,
@@ -376,17 +389,37 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             console.error('❌ Failed to update hasCompletedOnboarding in backend:', updateError);
           }
         }
+        
+        // For new users: Ensure they go through onboarding
+        if (data.is_new_user === true && currentUser) {
+          console.log('📋 Ensuring new Google user completes onboarding...');
+          set({
+            user: {
+              ...currentUser,
+              hasCompletedOnboarding: false
+            }
+          });
+        }
       } catch (profileError) {
         console.error('⚠️ Error fetching complete profile after Google login:', profileError);
         // Continue even if profile fetch fails
         
-        // Force hasCompletedOnboarding to true even if profile fetch fails
+        // Only force hasCompletedOnboarding for returning users if profile fetch fails
         const currentUser = get().user;
-        if (currentUser) {
+        if (data.is_new_user === false && currentUser) {
+          console.log('📋 Profile fetch failed, but ensuring returning user has completed onboarding');
           set({
             user: {
               ...currentUser,
               hasCompletedOnboarding: true
+            }
+          });
+        } else if (data.is_new_user === true && currentUser) {
+          console.log('📋 Profile fetch failed, but ensuring new user goes through onboarding');
+          set({
+            user: {
+              ...currentUser,
+              hasCompletedOnboarding: false
             }
           });
         }
